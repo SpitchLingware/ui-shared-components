@@ -1,0 +1,51 @@
+{
+
+    "compilerOptions": {
+        "rootDir": "./src",
+        "outDir": "./dist",
+        "lib": ["ES2023", "DOM", "DOM.Iterable"],
+        "module": "ES2020",
+        "moduleResolution": "node",
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+
+
+        /* Language and Environment */
+        "target": "ES2023",
+
+
+        /* Modules */
+        "resolveJsonModule": true,
+
+        /* Emit */
+        "declaration": true,
+        "declarationMap": false,
+        "sourceMap": false,
+        "removeComments": true,
+        "importHelpers": true,
+
+        /* Interop Constraints */
+        "allowJs": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": false,
+
+        /* Type Checking */
+        "strict": true,
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictBindCallApply": true,
+        "strictPropertyInitialization": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "useUnknownInCatchVariables": false,
+
+        /* Completeness */
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+
+    "include": ["src"]
+}

@@ -62,14 +62,24 @@ describe('toggleRulesetAction(current, flags)', () => {
     });
 
     it('should skip disabled actions', () => {
-        const flags = { and: true, or: false, 'not-and': false, 'not-or': false };
+        const flags = {
+            and: true,
+            or: false,
+            'not-and': false,
+            'not-or': false,
+        };
         let current: RuleSetAction = 'and';
         current = toggleRulesetAction(current, flags);
         expect(current).toBe('and'); // stays on same if next is disabled
     });
 
     it('should handle single enabled action', () => {
-        const flags = { and: true, or: false, 'not-and': false, 'not-or': false };
+        const flags = {
+            and: true,
+            or: false,
+            'not-and': false,
+            'not-or': false,
+        };
         let current: RuleSetAction = 'and';
         current = toggleRulesetAction(current, flags);
         expect(current).toBe('and'); // loops back to itself
@@ -106,7 +116,12 @@ describe('toggleRulesetAction(current, flags)', () => {
     });
 
     it('should handle empty rules list (all disabled)', () => {
-        const flags = { and: false, or: false, 'not-and': false, 'not-or': false };
+        const flags = {
+            and: false,
+            or: false,
+            'not-and': false,
+            'not-or': false,
+        };
         let current: RuleSetAction = 'and';
         current = toggleRulesetAction(current, flags);
         expect(current).toBe('and'); // returns unchanged if no rules

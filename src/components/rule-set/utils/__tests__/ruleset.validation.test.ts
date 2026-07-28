@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { validateRuleSet } from '../ruleset.validation';
-import type { RuleBase, RuleSetNoId, RuleSetAction } from '../../types/ruleset.types';
+import type {
+    RuleBase,
+    RuleSetNoId,
+    RuleSetAction,
+} from '../../types/ruleset.types';
 
 describe('validateRuleSet<T>()', () => {
     const createRule = (id: string = 'rule-1'): any => ({
@@ -8,7 +12,10 @@ describe('validateRuleSet<T>()', () => {
         type: 'rule',
     });
 
-    const createRuleset = <T>(action: RuleSetAction = 'and', features: any[] = []): RuleSetNoId<T> => ({
+    const createRuleset = <T>(
+        action: RuleSetAction = 'and',
+        features: any[] = [],
+    ): RuleSetNoId<T> => ({
         type: 'ruleset' as any,
         action,
         features,
@@ -93,7 +100,10 @@ describe('validateRuleSet<T>()', () => {
             const validRule = createRule();
             const validNested = createRuleset<string>('and', [createRule()]);
 
-            const ruleSet = createRuleset<string>('and', [validRule, validNested]);
+            const ruleSet = createRuleset<string>('and', [
+                validRule,
+                validNested,
+            ]);
 
             expect(validateRuleSet(ruleSet, () => true)).toBe(true);
         });

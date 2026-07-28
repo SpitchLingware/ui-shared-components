@@ -7,7 +7,9 @@ export const applyDragGhost = (event: DragEvent<HTMLElement>) => {
     event.dataTransfer.effectAllowed = 'move';
     event.stopPropagation();
 
-    const { width } = ((event.target as HTMLElement).parentNode as HTMLElement).getClientRects()[0];
+    const { width } = (
+        (event.target as HTMLElement).parentNode as HTMLElement
+    ).getClientRects()[0];
     const dragGhost = document.createElement('div');
     dragGhost.style.width = width + 'px';
     dragGhost.style.height = '32px';

@@ -110,11 +110,7 @@ export const HelpEditor: FC<HelpEditorProps> = ({
                 break;
             case 'formatBlock': {
                 const tag = command.arg.replace(/[<>]/g, '') as
-                    | 'p'
-                    | 'h1'
-                    | 'h2'
-                    | 'pre'
-                    | 'blockquote';
+                    'p' | 'h1' | 'h2' | 'pre' | 'blockquote';
                 setBlock(el, tag);
                 break;
             }

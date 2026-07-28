@@ -21,7 +21,11 @@ const RuleOrder: React.FC<Props> = (props: Props) => {
 
     let arrows;
     if (anchor === 'left' || !anchor) {
-        arrows = in_order ? <ArrowRightAlt fontSize={'inherit'} /> : <CompareArrows fontSize={'inherit'} />;
+        arrows = in_order ? (
+            <ArrowRightAlt fontSize={'inherit'} />
+        ) : (
+            <CompareArrows fontSize={'inherit'} />
+        );
     } else {
         arrows = <SettingsOutlinedIcon fontSize={'inherit'} />;
     }
@@ -41,14 +45,23 @@ const RuleOrder: React.FC<Props> = (props: Props) => {
 
     // Fix: Wrap in a span when disabled to ensure tooltip works
     arrows = (
-        <Tooltip title={`${word_order}: ${current}`}>{disabled && onClick ? <span>{arrows}</span> : arrows}</Tooltip>
+        <Tooltip title={`${word_order}: ${current}`}>
+            {disabled && onClick ? <span>{arrows}</span> : arrows}
+        </Tooltip>
     );
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {arrows}
             {distance ? (
-                <Avatar sx={{ bgcolor: blue[800], width: 24, height: 24, fontSize: '0.8em' }} variant='rounded'>
+                <Avatar
+                    sx={{
+                        bgcolor: blue[800],
+                        width: 24,
+                        height: 24,
+                        fontSize: '0.8em',
+                    }}
+                    variant='rounded'>
                     {distance}
                 </Avatar>
             ) : null}

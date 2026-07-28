@@ -19,7 +19,9 @@ describe('getDefaultFilterValues(fields, values)', () => {
 
         it('should use provided value for date field', () => {
             const fields = [createField('date', 'updatedAt')];
-            const result = getDefaultFilterValues(fields, { updatedAt: '2024-01-01' });
+            const result = getDefaultFilterValues(fields, {
+                updatedAt: '2024-01-01',
+            });
             expect(result[0].value).toBe('2024-01-01');
         });
 
@@ -131,7 +133,9 @@ describe('getDefaultFilterValues(fields, values)', () => {
                 predicates: [{ field: 'color', value: 'red' }],
             };
             const result = getDefaultFilterValues([field], {});
-            expect((result[0] as any).predicates).toEqual([{ field: 'color', value: 'red' }]);
+            expect((result[0] as any).predicates).toEqual([
+                { field: 'color', value: 'red' },
+            ]);
         });
     });
 
@@ -203,7 +207,10 @@ describe('getDefaultFilterValues(fields, values)', () => {
                 createField('number', 'age'),
             ];
 
-            const result = getDefaultFilterValues(fields, { name: 'John', age: '30' });
+            const result = getDefaultFilterValues(fields, {
+                name: 'John',
+                age: '30',
+            });
             expect(result[0].value).toBe('John');
             expect(result[1].value).toBe('30');
         });

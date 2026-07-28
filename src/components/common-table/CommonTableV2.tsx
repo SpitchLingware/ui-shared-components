@@ -405,8 +405,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                             {visibleFields.map((field, idx) => {
                                 const setting = columnSettings[idx];
                                 const FilterComp = setting.filter as
-                                    | React.FC<any>
-                                    | undefined;
+                                    React.FC<any> | undefined;
                                 const fv = findFilter(filter, field.field);
                                 return (
                                     <TableCell

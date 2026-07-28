@@ -46,9 +46,7 @@ const closestTag = (
 const topBlock = (root: HTMLElement, node: Node | null): HTMLElement | null => {
     let n: Node | null = node;
     while (n && n.parentNode !== root) n = n.parentNode;
-    return n && n.parentNode === root && n instanceof HTMLElement
-        ? n
-        : null;
+    return n && n.parentNode === root && n instanceof HTMLElement ? n : null;
 };
 
 const selectedTopBlocks = (root: HTMLElement, range: Range): HTMLElement[] => {

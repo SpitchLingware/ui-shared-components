@@ -1,5 +1,4 @@
 {
-
     "compilerOptions": {
         "rootDir": "./src",
         "outDir": "./dist",
@@ -9,10 +8,8 @@
         "jsx": "react-jsx",
         "jsxImportSource": "react",
 
-
         /* Language and Environment */
         "target": "ES2023",
-
 
         /* Modules */
         "resolveJsonModule": true,

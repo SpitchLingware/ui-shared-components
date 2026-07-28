@@ -4,7 +4,6 @@ import { describe, it, expect } from 'vitest';
 import { parseBucketPath } from '../useDragAndDrop';
 
 describe('parseBucketPath(value)', () => {
-
     describe('numeric values', () => {
         it('should return empty string and number for numeric input', () => {
             expect(parseBucketPath(5)).toEqual(['', 5]);
@@ -36,7 +35,10 @@ describe('parseBucketPath(value)', () => {
         it('should split path and index at last dot', () => {
             expect(parseBucketPath('features.0')).toEqual(['features', 0]);
             expect(parseBucketPath('items.5')).toEqual(['items', 5]);
-            expect(parseBucketPath('nested.path.10')).toEqual(['nested.path', 10]);
+            expect(parseBucketPath('nested.path.10')).toEqual([
+                'nested.path',
+                10,
+            ]);
         });
 
         it('should handle multiple dots in path', () => {
@@ -95,11 +97,7 @@ describe('useDragAndDrop logic (applyChanges)', () => {
     it('should move element from one array to another', () => {
         // Simulate the applyChanges logic
         const dataObject = {
-            features: [
-                { id: 'a' },
-                { id: 'b' },
-                { id: 'c' },
-            ],
+            features: [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
         };
 
         const from = { id: 'a', __path: 'features.0' };

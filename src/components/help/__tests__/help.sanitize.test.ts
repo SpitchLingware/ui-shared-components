@@ -33,17 +33,22 @@ describe('help.sanitize module', () => {
     // Test createHtmlSanitizer behavior (which internally uses schemeOf)
     describe('createHtmlSanitizer', () => {
         it('should return empty string when no DOM available', async () => {
-            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } = await import('../help.sanitize');
+            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } =
+                await import('../help.sanitize');
             const sanitizer = createHtmlSanitizer(FALLBACK_HTML_POLICY);
             // In node environment (no window), should return ''
             expect(sanitizer('<p>test</p>')).toBe('');
         });
 
         it('should sanitize HTML with allowed tags when DOM available', async () => {
-            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } = await import('../help.sanitize');
+            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } =
+                await import('../help.sanitize');
 
             // Mock DOM if available (jsdom environment)
-            if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+            if (
+                typeof window !== 'undefined' &&
+                typeof window.DOMParser !== 'undefined'
+            ) {
                 const sanitizer = createHtmlSanitizer(FALLBACK_HTML_POLICY);
                 const result = sanitizer('<p>Hello <b>World</b></p>');
                 expect(result).toContain('Hello');
@@ -52,26 +57,40 @@ describe('help.sanitize module', () => {
         });
 
         it('should remove dangerous tags', async () => {
-            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } = await import('../help.sanitize');
+            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } =
+                await import('../help.sanitize');
 
-            if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+            if (
+                typeof window !== 'undefined' &&
+                typeof window.DOMParser !== 'undefined'
+            ) {
                 const sanitizer = createHtmlSanitizer(FALLBACK_HTML_POLICY);
-                const result = sanitizer('<p>text</p><script>alert("xss")</script>');
+                const result = sanitizer(
+                    '<p>text</p><script>alert("xss")</script>',
+                );
                 expect(result).not.toContain('script');
             }
         });
 
         it('should validate href schemes using schemeOf logic', async () => {
-            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } = await import('../help.sanitize');
+            const { createHtmlSanitizer, FALLBACK_HTML_POLICY } =
+                await import('../help.sanitize');
 
-            if (typeof window !== 'undefined' && typeof window.DOMParser !== 'undefined') {
+            if (
+                typeof window !== 'undefined' &&
+                typeof window.DOMParser !== 'undefined'
+            ) {
                 const sanitizer = createHtmlSanitizer(FALLBACK_HTML_POLICY);
                 // Test that allowed scheme works
-                const result1 = sanitizer('<a href="https://example.com">link</a>');
+                const result1 = sanitizer(
+                    '<a href="https://example.com">link</a>',
+                );
                 expect(result1).toContain('href');
 
                 // Test that disallowed scheme is removed (javascript:)
-                const result2 = sanitizer('<a href="javascript:alert(1)">bad link</a>');
+                const result2 = sanitizer(
+                    '<a href="javascript:alert(1)">bad link</a>',
+                );
                 // The href should be removed because 'javascript' is not in allowed schemes
                 expect(result2).not.toContain('href="javascript');
             }

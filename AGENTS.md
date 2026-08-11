@@ -19,7 +19,7 @@ src/hooks/                — useDragAndDrop
 - **CommonTableV2** — основная таблица. Поддерживает сортировку, фильтрацию (все фильтры из common-table/filters), пагинацию. Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
 - **CommonTablePaginator** — нижняя панель нумерации страниц MUI.
 - **HelpEditor** – WYSIWYG-редактор на contentEditable. Инструменты: bold, italic, underline, H1/H2/p/ul/ol/code и вставка ссылок (внутренних `help:<slug>` или внешних URL) и изображений. Многоязычность через locale switches.
-- **HelpContext / HelpDialog / HelpAnchor** – контекст для хранения статей справки и отображение их в модальном окне, якорные ссылки из HelpEditor.
+- **HelpContext / HelpDialog / HelpAnchor** – контекст для хранения статей справки и отображение их в модальном окне, якорные ссылки из HelpEditor. В режиме редактирования `HelpDialog` показывает кнопки «Экспорт» / «Импорт», если переданы `onExport` / `onImport`; формат файла определяет потребитель, библиотека лишь отдаёт выбранный `File` (см. README).
 - **HelpTree** – дерево навигации по статьям (из `help.types`).
 - **RuleSetEditor** + helpers — визуальный редактор наборов правил. Поддерживает BooleanLogicRuleSet / UserLogicRuleSet, с проверкой валидности и утилитой сборки.
   Рядом **RuleOrder**, **SystemConditionRuleWrapper**.

@@ -1,12 +1,19 @@
-import { Box, Tooltip } from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import { Box, IconButton, Tooltip } from '@mui/material';
+import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
 import moment, { Moment } from 'moment-timezone';
-import React from 'react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     DATE_OPERATORS,
     FilterEditorProps,
     RANGE_OPERATORS,
 } from '../types/filter.types';
+import {
+    convertValue,
+    valueHasTime,
+    withTimeFormat,
+} from './date-filter.utils';
 import { OperatorMenu } from './OperatorMenu';
 
 type RangeValue = { start?: string; end?: string };
@@ -38,7 +45,9 @@ type PickerWithTooltipProps = {
     value: Moment | null;
     disabled?: boolean;
     onChange: (v: Moment | null) => void;
-} & FilterEditorProps['filterProps'];
+    /* the bound names an instant: hours and minutes are part of it */
+    time?: boolean;
+} & Omit<FilterEditorProps['filterProps'], 'withTime'>;
 
 const PickerWithTooltip: React.FC<PickerWithTooltipProps> = ({
     value,
@@ -46,21 +55,37 @@ const PickerWithTooltip: React.FC<PickerWithTooltipProps> = ({
     onChange,
     format,
     timezone,
+    time,
 }) => {
     const formatted = value && value.isValid() ? value.format(format) : '';
-    const picker = (
-        <DatePicker
-            value={value}
-            disabled={disabled}
-            timezone={timezone}
-            format={format}
-            onChange={onChange}
+    const shared = {
+        value,
+        disabled,
+        timezone,
+        format,
+        onChange,
+        slotProps: {
+            textField: { size: 'small' as const, sx: fieldSx },
+            actionBar: { actions: ['clear', 'accept'] as any },
+        },
+    };
+    /* a wider field: the same box that fits a date crops "2026-07-15 14:30" */
+    const picker = time ? (
+        <DateTimePicker
+            {...shared}
+            ampm={false}
             slotProps={{
-                textField: { size: 'small', sx: fieldSx },
-                actionBar: { actions: ['clear', 'accept'] },
+                ...shared.slotProps,
+                textField: {
+                    ...shared.slotProps.textField,
+                    sx: { ...fieldSx, minWidth: 150 },
+                },
             }}
         />
+    ) : (
+        <DatePicker {...shared} />
     );
+
     if (!formatted) return picker;
     return (
         <Tooltip title={formatted} placement='bottom' arrow>
@@ -75,13 +100,52 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
     onChange,
     filterProps,
 }) => {
-    const { format, timezone } = filterProps;
+    const { format, timezone, withTime } = filterProps;
+    const { t } = useTranslation();
+
+    /* Read off the value, so a filter restored from the table's stored state comes back with the
+     * clock already on. It is state as well, because the switch has to survive an empty value —
+     * there is nothing to read a time off yet while the operator is picking the first bound. */
+    const [time, setTime] = useState(() =>
+        Boolean(withTime && valueHasTime(filter.value, format, timezone)),
+    );
+
+    const precise = Boolean(withTime && time);
+    const activeFormat = precise ? withTimeFormat(format) : format;
 
     const isRange = RANGE_OPERATORS.has(filter.operator);
     const range = toRange(filter.value);
 
     const emit = (value: any, operator: string) =>
         onChange({ value, operator });
+
+    const toggleTime = () => {
+        const next = !time;
+        setTime(next);
+        /* the bounds already chosen are rewritten rather than dropped: asking for more precision
+         * must not empty the filter the operator has been narrowing */
+        emit(
+            convertValue(filter.value, format, timezone, next),
+            filter.operator,
+        );
+    };
+
+    const clock = withTime ? (
+        <Tooltip
+            title={t('table:table.specify_time', 'Specify the time')}
+            placement='top'>
+            <span>
+                <IconButton
+                    size='small'
+                    disabled={disabled}
+                    color={precise ? 'primary' : 'default'}
+                    onClick={toggleTime}
+                    sx={{ p: 0.25 }}>
+                    <ScheduleIcon fontSize='small' />
+                </IconButton>
+            </span>
+        </Tooltip>
+    ) : null;
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -90,11 +154,15 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
                     <PickerWithTooltip
                         value={toMoment(range.start, timezone)}
                         timezone={timezone}
-                        format={format}
+                        format={activeFormat}
+                        time={precise}
                         disabled={disabled}
                         onChange={(v) =>
                             emit(
-                                { ...range, start: fromMoment(v, format) },
+                                {
+                                    ...range,
+                                    start: fromMoment(v, activeFormat),
+                                },
                                 filter.operator,
                             )
                         }
@@ -102,11 +170,12 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
                     <PickerWithTooltip
                         value={toMoment(range.end, timezone)}
                         timezone={timezone}
-                        format={format}
+                        format={activeFormat}
+                        time={precise}
                         disabled={disabled}
                         onChange={(v) =>
                             emit(
-                                { ...range, end: fromMoment(v, format) },
+                                { ...range, end: fromMoment(v, activeFormat) },
                                 filter.operator,
                             )
                         }
@@ -116,13 +185,15 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
                 <PickerWithTooltip
                     value={toMoment(filter.value, timezone)}
                     timezone={timezone}
-                    format={format}
+                    format={activeFormat}
+                    time={precise}
                     disabled={disabled}
                     onChange={(v) =>
-                        emit(fromMoment(v, format), filter.operator)
+                        emit(fromMoment(v, activeFormat), filter.operator)
                     }
                 />
             )}
+            {clock}
             <OperatorMenu
                 operator={filter.operator}
                 operators={DATE_OPERATORS}

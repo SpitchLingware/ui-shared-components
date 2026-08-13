@@ -12,6 +12,10 @@ export type FilterEditorProps = {
     filterProps: {
         timezone: string;
         format: string;
+        /* date columns only: offer the "specify the time" switch, which makes the bounds name an
+         * instant instead of a calendar day. Off unless the column asks for it — a backend that
+         * cannot read a time-precise bound would drop the time silently. */
+        withTime?: boolean;
     };
 };
 

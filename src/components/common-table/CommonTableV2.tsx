@@ -37,6 +37,7 @@ import {
 
 type Props = {
     elementType: string;
+    storageKey?: string;
     fields: Array<TableField>;
     idProperty?: string;
     dbState: CommonTableV2State;
@@ -89,6 +90,7 @@ const replaceFilter = (
 export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const {
         elementType,
+        storageKey = elementType,
         fields,
         idProperty = '_id',
         dbData,
@@ -119,7 +121,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         const initial: ColumnWidths = {};
         visibleFields.forEach((f) => {
             initial[f.field] =
-                getStoredWidth(elementType, f.field) ?? DEFAULT_COL_WIDTH;
+                getStoredWidth(storageKey, f.field) ?? DEFAULT_COL_WIDTH;
         });
         return initial;
     });
@@ -130,12 +132,12 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             visibleFields.forEach((f) => {
                 next[f.field] =
                     prev[f.field] ??
-                    getStoredWidth(elementType, f.field) ??
+                    getStoredWidth(storageKey, f.field) ??
                     DEFAULT_COL_WIDTH;
             });
             return next;
         });
-    }, [elementType, visibleFields]);
+    }, [storageKey, visibleFields]);
 
     const onSortClick = (fieldName: string) => {
         if (loading) return;
@@ -194,7 +196,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             const r = resizingRef.current;
             if (r) {
                 storeWidth(
-                    elementType,
+                    storageKey,
                     r.field,
                     widths[r.field] ?? r.startWidth,
                 );
@@ -209,7 +211,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
         };
-    }, [elementType, widths]);
+    }, [storageKey, widths]);
 
     const startResize = (field: string, e: React.MouseEvent) => {
         e.preventDefault();

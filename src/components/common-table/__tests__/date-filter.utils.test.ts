@@ -3,14 +3,10 @@ import {
     boundHasTime,
     convertBound,
     convertValue,
+    parseBound,
     valueHasTime,
     withTimeFormat,
 } from '../filters/date-filter.utils';
-
-/* The date filter's bounds are strings on the wire, and their SPELLING is what tells the backend
- * how to read them: "2026-07-15" is a calendar day, "2026-07-15 14:30" an instant. Everything here
- * is about not losing that distinction — the clock switch has to survive a reload, and turning it
- * on must not throw away the bounds the operator already picked. */
 
 const FORMAT = 'YYYY-MM-DD';
 const TZ = 'Europe/Moscow';
@@ -27,7 +23,6 @@ describe('reading the spelling back off a bound', () => {
         }
     });
 
-    /* what makes the switch come back on for a filter restored from the table's stored state */
     it('a range names instants when either of its bounds does', () => {
         expect(valueHasTime({ start: '2026-07-15', end: '' }, FORMAT, TZ)).toBe(
             false,
@@ -45,9 +40,50 @@ describe('reading the spelling back off a bound', () => {
     });
 });
 
+describe('reading a bound back for the picker', () => {
+    it('an instant is read in the zone it was written in, not the local one', () => {
+        const parsed = parseBound('2026-07-15 14:30', FORMAT, TZ);
+
+        expect(parsed?.tz(TZ).format('YYYY-MM-DD HH:mm')).toBe(
+            '2026-07-15 14:30',
+        );
+    });
+
+    it('a day is midnight of that day in the same zone', () => {
+        const parsed = parseBound('2026-07-15', FORMAT, TZ);
+
+        expect(parsed?.tz(TZ).format('YYYY-MM-DD HH:mm')).toBe(
+            '2026-07-15 00:00',
+        );
+    });
+
+    it('reading and re-writing a bound is a fixed point', () => {
+        const raw = '2026-07-15 14:30';
+        const once = parseBound(raw, FORMAT, TZ)!.format(withTimeFormat(FORMAT));
+        const twice = parseBound(once, FORMAT, TZ)!.format(
+            withTimeFormat(FORMAT),
+        );
+
+        expect(once).toBe(raw);
+        expect(twice).toBe(raw);
+    });
+
+    it('an ISO instant is still understood', () => {
+        const parsed = parseBound('2026-07-15T11:30:00.000Z', FORMAT, TZ);
+
+        expect(parsed?.tz(TZ).format('YYYY-MM-DD HH:mm')).toBe(
+            '2026-07-15 14:30',
+        );
+    });
+
+    it('nothing at all is null rather than "now"', () => {
+        for (const raw of ['', undefined, null, 'вчера', 42, {}]) {
+            expect(parseBound(raw, FORMAT, TZ)).toBe(null);
+        }
+    });
+});
+
 describe('switching the clock on and off', () => {
-    /* midnight, not "now": the operator is about to type the time, and a bound that moves on its
-     * own would silently change the range they had already narrowed */
     it('a day becomes the start of that day', () => {
         expect(convertBound('2026-07-15', FORMAT, TZ, true)).toBe(
             '2026-07-15 00:00',
@@ -98,7 +134,6 @@ describe('switching the clock on and off', () => {
         ).toEqual({ start: '2026-07-15 00:00', end: '' });
     });
 
-    /* the round trip: on, then off, and the operator is back where they started */
     it('switching on and off again returns the original bound', () => {
         const on = convertValue('2026-07-15', FORMAT, TZ, true);
 

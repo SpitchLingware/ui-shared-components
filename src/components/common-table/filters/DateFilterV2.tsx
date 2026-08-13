@@ -1,7 +1,7 @@
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { Box, IconButton, Tooltip } from '@mui/material';
 import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
-import moment, { Moment } from 'moment-timezone';
+import { Moment } from 'moment-timezone';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../types/filter.types';
 import {
     convertValue,
+    parseBound,
     valueHasTime,
     withTimeFormat,
 } from './date-filter.utils';
@@ -25,11 +26,11 @@ const toRange = (raw: any): RangeValue => {
     return { start: '', end: '' };
 };
 
-const toMoment = (raw: any, timezone: string): Moment | null => {
-    if (!raw) return null;
-    const m = moment(raw).tz(timezone);
-    return m.isValid() ? m : null;
-};
+const toMoment = (
+    raw: any,
+    format: string,
+    timezone: string,
+): Moment | null => parseBound(raw, format, timezone);
 
 const fromMoment = (m: Moment | null, format: string): string =>
     m && m.isValid() ? m.format(format) : '';
@@ -45,7 +46,6 @@ type PickerWithTooltipProps = {
     value: Moment | null;
     disabled?: boolean;
     onChange: (v: Moment | null) => void;
-    /* the bound names an instant: hours and minutes are part of it */
     time?: boolean;
 } & Omit<FilterEditorProps['filterProps'], 'withTime'>;
 
@@ -69,7 +69,6 @@ const PickerWithTooltip: React.FC<PickerWithTooltipProps> = ({
             actionBar: { actions: ['clear', 'accept'] as any },
         },
     };
-    /* a wider field: the same box that fits a date crops "2026-07-15 14:30" */
     const picker = time ? (
         <DateTimePicker
             {...shared}
@@ -103,9 +102,6 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
     const { format, timezone, withTime } = filterProps;
     const { t } = useTranslation();
 
-    /* Read off the value, so a filter restored from the table's stored state comes back with the
-     * clock already on. It is state as well, because the switch has to survive an empty value —
-     * there is nothing to read a time off yet while the operator is picking the first bound. */
     const [time, setTime] = useState(() =>
         Boolean(withTime && valueHasTime(filter.value, format, timezone)),
     );
@@ -122,8 +118,6 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
     const toggleTime = () => {
         const next = !time;
         setTime(next);
-        /* the bounds already chosen are rewritten rather than dropped: asking for more precision
-         * must not empty the filter the operator has been narrowing */
         emit(
             convertValue(filter.value, format, timezone, next),
             filter.operator,
@@ -152,7 +146,7 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
             {isRange ? (
                 <Box sx={{ display: 'flex', gap: 0.5, flex: 1, minWidth: 0 }}>
                     <PickerWithTooltip
-                        value={toMoment(range.start, timezone)}
+                        value={toMoment(range.start, format, timezone)}
                         timezone={timezone}
                         format={activeFormat}
                         time={precise}
@@ -168,7 +162,7 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
                         }
                     />
                     <PickerWithTooltip
-                        value={toMoment(range.end, timezone)}
+                        value={toMoment(range.end, format, timezone)}
                         timezone={timezone}
                         format={activeFormat}
                         time={precise}
@@ -183,7 +177,7 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
                 </Box>
             ) : (
                 <PickerWithTooltip
-                    value={toMoment(filter.value, timezone)}
+                    value={toMoment(filter.value, format, timezone)}
                     timezone={timezone}
                     format={activeFormat}
                     time={precise}

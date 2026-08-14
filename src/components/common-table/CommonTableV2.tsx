@@ -63,6 +63,12 @@ type Props = {
     selectable?: boolean;
     /** selection is a list of ids plus a "select all on this page" header checkbox */
     multiSelect?: boolean;
+    /**
+     * A click anywhere in a row toggles its selection. Turn it off where the checkbox is the
+     * only way to select - a table whose rows open an editor on double click would otherwise
+     * select and deselect on the way there.
+     */
+    selectOnRowClick?: boolean;
     /** the caller renders its own footer instead of the built-in paginator */
     hidePaginator?: boolean;
     /** drop the filter row even when columns declare filters */
@@ -143,6 +149,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         getColumnSettings,
         selectable = true,
         multiSelect = false,
+        selectOnRowClick = true,
         hidePaginator = false,
         hideFilterRow = false,
         internalPaging = false,
@@ -267,7 +274,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         [multiSelect, updateDbState],
     );
 
-    const handleRowClick = (id: string) => {
+    const toggleSelection = (id: string) => {
         if (loading || !selectable) return;
         if (selectedIds.has(id)) {
             emitSelection(toIdList(selected).filter((item) => item !== id));
@@ -667,12 +674,20 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                       )
                                                 : undefined
                                         }
-                                        onClick={() => handleRowClick(id)}
+                                        onClick={
+                                            selectOnRowClick
+                                                ? () => toggleSelection(id)
+                                                : undefined
+                                        }
                                         onDoubleClick={() =>
                                             handleRowDoubleClick(id, row)
                                         }
                                         sx={{
-                                            cursor: 'pointer',
+                                            cursor:
+                                                selectOnRowClick ||
+                                                onDoubleClick
+                                                    ? 'pointer'
+                                                    : 'default',
                                             ...((getRowSx?.(row) ??
                                                 {}) as object),
                                         }}>
@@ -743,7 +758,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                             e.stopPropagation()
                                                         }
                                                         onChange={() =>
-                                                            handleRowClick(id)
+                                                            toggleSelection(id)
                                                         }
                                                     />
                                                 </TableCell>

@@ -1,7 +1,11 @@
 import { Box, TextField } from '@mui/material';
 import { debounce } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FilterEditorProps, STRING_OPERATORS } from '../types/filter.types';
+import {
+    FilterEditorProps,
+    resolveOperators,
+    STRING_OPERATORS,
+} from '../types/filter.types';
 import { OperatorMenu } from './OperatorMenu';
 
 const VALUELESS = new Set(['empty', 'notEmpty']);
@@ -10,6 +14,7 @@ export const StringFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
     onChange,
+    operators,
 }) => {
     const [local, setLocal] = useState<string>(
         typeof filter.value === 'string' ? filter.value : '',
@@ -50,7 +55,7 @@ export const StringFilterV2: React.FC<FilterEditorProps> = ({
             />
             <OperatorMenu
                 operator={filter.operator}
-                operators={STRING_OPERATORS}
+                operators={resolveOperators(operators, STRING_OPERATORS)}
                 disabled={disabled}
                 onChange={(operator) => {
                     pushChange.cancel();

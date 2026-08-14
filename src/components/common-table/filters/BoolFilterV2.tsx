@@ -1,13 +1,18 @@
 import { Box, MenuItem, TextField } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { BOOL_OPERATORS, FilterEditorProps } from '../types/filter.types';
+import {
+    BOOL_OPERATORS,
+    FilterEditorProps,
+    resolveOperators,
+} from '../types/filter.types';
 import { OperatorMenu } from './OperatorMenu';
 
 export const BoolFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
     onChange,
+    operators,
 }) => {
     const { t } = useTranslation();
 
@@ -47,7 +52,7 @@ export const BoolFilterV2: React.FC<FilterEditorProps> = ({
             </TextField>
             <OperatorMenu
                 operator={filter.operator}
-                operators={BOOL_OPERATORS}
+                operators={resolveOperators(operators, BOOL_OPERATORS)}
                 disabled={disabled}
                 onChange={(operator) =>
                     onChange({ value: filter.value, operator })

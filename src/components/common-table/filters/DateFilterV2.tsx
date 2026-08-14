@@ -6,6 +6,7 @@ import {
     DATE_OPERATORS,
     FilterEditorProps,
     RANGE_OPERATORS,
+    resolveOperators,
 } from '../types/filter.types';
 import { OperatorMenu } from './OperatorMenu';
 
@@ -74,6 +75,7 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
     disabled,
     onChange,
     filterProps,
+    operators,
 }) => {
     const { format, timezone } = filterProps;
 
@@ -125,7 +127,7 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
             )}
             <OperatorMenu
                 operator={filter.operator}
-                operators={DATE_OPERATORS}
+                operators={resolveOperators(operators, DATE_OPERATORS)}
                 disabled={disabled}
                 onChange={(operator) => {
                     const becomingRange = RANGE_OPERATORS.has(operator);

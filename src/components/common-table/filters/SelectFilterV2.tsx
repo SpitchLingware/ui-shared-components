@@ -8,7 +8,11 @@ import {
 } from '@mui/material';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FilterEditorProps, SELECT_OPERATORS } from '../types/filter.types';
+import {
+    FilterEditorProps,
+    resolveOperators,
+    SELECT_OPERATORS,
+} from '../types/filter.types';
 import { OperatorMenu } from './OperatorMenu';
 
 type Option = { id: string; label: string };
@@ -40,9 +44,11 @@ export const SelectFilterV2: React.FC<Props> = ({
     disabled,
     onChange,
     filterProps,
+    operators,
 }) => {
     const { t } = useTranslation();
     const multiple = filterProps?.multiple !== false;
+    const operatorOptions = resolveOperators(operators, SELECT_OPERATORS);
     const [options, setOptions] = useState<Option[]>([]);
     const selected = normalizeValue(filter.value);
 
@@ -81,9 +87,9 @@ export const SelectFilterV2: React.FC<Props> = ({
     const renderLabel = (ids: string[]) => {
         if (ids.length === 0) {
             return (
-                <em style={{ color: '#999' }}>
+                <Box component='em' sx={{ color: 'text.disabled' }}>
                     {filterProps?.placeholder ?? ''}
-                </em>
+                </Box>
             );
         }
         return ids
@@ -129,7 +135,7 @@ export const SelectFilterV2: React.FC<Props> = ({
                 </TextField>
                 <OperatorMenu
                     operator={filter.operator}
-                    operators={SELECT_OPERATORS}
+                    operators={operatorOptions}
                     disabled={disabled}
                     onChange={(operator) =>
                         onChange({ value: filter.value, operator })

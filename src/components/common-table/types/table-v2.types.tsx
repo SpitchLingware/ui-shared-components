@@ -1,4 +1,6 @@
+import { SxProps, Theme } from '@mui/material';
 import React, { ReactNode } from 'react';
+import { OperatorOption } from './filter.types';
 import { TableFieldParams } from './table-v2.fields';
 
 export type CommonTableV2Sorting = {
@@ -22,6 +24,12 @@ export type CommonTableV2ColumnSettings = {
     renderValue?: (params: TableFieldParams) => ReactNode;
 
     sortable?: boolean;
+    /**
+     * Narrows the operator menu of this column's filter. Without it every filter offers its
+     * whole built-in list, including operators the consumer's query builder cannot express —
+     * such a choice looks applied and silently changes nothing.
+     */
+    operators?: Array<OperatorOption>;
 };
 
 export type CommonTableV2Data<T = any> = {
@@ -33,8 +41,20 @@ export type CommonTableV2Data<T = any> = {
 export type CommonTableV2State = {
     skip: number;
     limit: number;
-    selected?: string;
+    /** a single id, or a list of them when the table runs with `multiSelect` */
+    selected?: string | Array<string>;
     filter?: Array<CommonTableV2FilterValue>;
     sort?: CommonTableV2Sorting;
     loading?: boolean;
+    /** ids of the rows whose detail panel is open */
+    expanded?: Array<string>;
 };
+
+export type CommonTableV2RowDrag<T = any> = {
+    /** called with the source and target row indexes of a completed drag */
+    onRowOrderChange: (fromIndex: number, toIndex: number) => void;
+    /** rows this returns true for get no grab handle and cannot be dropped onto */
+    isDragDisabled?: (row: T) => boolean;
+};
+
+export type CommonTableV2RowSx = (row: any) => SxProps<Theme> | undefined;

@@ -10,9 +10,7 @@ import {
     Stack,
     TextField,
     Typography,
-    useTheme,
 } from '@mui/material';
-import { grey } from '@mui/material/colors';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -40,7 +38,6 @@ export const CommonTablePaginator: React.FC<Props> = ({
     onRefresh,
 }) => {
     const { t } = useTranslation();
-    const theme = useTheme();
 
     const totalPages = Math.max(1, Math.ceil(count / Math.max(1, limit)));
     const currentPage = Math.min(
@@ -75,14 +72,8 @@ export const CommonTablePaginator: React.FC<Props> = ({
                 py: 0.5,
                 borderTop: 1,
                 borderColor: 'divider',
-                bgcolor: grey[100],
+                bgcolor: 'background.default',
                 fontSize: '0.8rem',
-                ...theme.applyStyles('dark', {
-                    backgroundColor: '#2c2c2c',
-                    '&:hover': {
-                        backgroundColor: '#3a3a3a',
-                    },
-                }),
             }}>
             <IconButton
                 size='small'

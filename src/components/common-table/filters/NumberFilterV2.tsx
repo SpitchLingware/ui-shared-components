@@ -1,7 +1,12 @@
 import { Box, TextField } from '@mui/material';
 import { debounce } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FilterEditorProps, NUMBER_OPERATORS, RANGE_OPERATORS } from '../types';
+import {
+    FilterEditorProps,
+    NUMBER_OPERATORS,
+    RANGE_OPERATORS,
+    resolveOperators,
+} from '../types';
 import { OperatorMenu } from './OperatorMenu';
 
 type RangeValue = { start?: number | ''; end?: number | '' };
@@ -29,6 +34,7 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
     onChange,
+    operators,
 }) => {
     const isRange = RANGE_OPERATORS.has(filter.operator);
 
@@ -111,7 +117,7 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
             )}
             <OperatorMenu
                 operator={filter.operator}
-                operators={NUMBER_OPERATORS}
+                operators={resolveOperators(operators, NUMBER_OPERATORS)}
                 disabled={disabled}
                 onChange={(operator) => {
                     pushChange.cancel();

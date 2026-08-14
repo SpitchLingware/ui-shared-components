@@ -1,5 +1,3 @@
-import { ReactNode } from 'react';
-
 export type TableField =
     | TableNumberField
     | TableDateField
@@ -25,8 +23,15 @@ export type TableFieldParams = {
 type BaseField = {
     field: string;
     i18nTag?: string;
-    render?: (params: TableFieldParams) => ReactNode;
     hidden?: boolean;
+    /** ready-made header caption; wins over the `details:` i18n lookup */
+    label?: string;
+    /** initial column width in px; a stored user resize still wins */
+    width?: number;
+    minWidth?: number;
+    align?: 'left' | 'center' | 'right';
+    /** collapse the cell to one line with an ellipsis instead of wrapping */
+    nowrap?: boolean;
 };
 
 export type TableNumberField = BaseField & {

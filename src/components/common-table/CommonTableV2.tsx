@@ -1,22 +1,26 @@
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import {
     Box,
     Checkbox,
     CircularProgress,
+    IconButton,
     LinearProgress,
+    SxProps,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
+    Theme,
     Typography,
-    useTheme,
 } from '@mui/material';
-import { grey } from '@mui/material/colors';
 import React, {
+    ReactNode,
     useCallback,
     useEffect,
     useMemo,
@@ -29,6 +33,8 @@ import {
     CommonTableV2ColumnSettings,
     CommonTableV2Data,
     CommonTableV2FilterValue,
+    CommonTableV2RowDrag,
+    CommonTableV2RowSx,
     CommonTableV2Sorting,
     CommonTableV2State,
     FilterChange,
@@ -39,33 +45,65 @@ type Props = {
     elementType: string;
     fields: Array<TableField>;
     idProperty?: string;
+    /**
+     * Identity of a row for selection, keys, `data-id` and double click. Defaults to the
+     * `idProperty` value falling back to `id`, `name` and finally the index — rows of the
+     * report-template models carry `id` but no `_id`, and a table that cannot tell them
+     * apart renders every row selected.
+     */
+    getRowId?: (row: any, index: number) => string;
     dbState: CommonTableV2State;
     dbData: CommonTableV2Data;
-    onDoubleClick?: (id: string) => void;
+    onDoubleClick?: (id: string, row: any) => void;
     pageSizes?: number[];
     updateDbState: (field: keyof CommonTableV2State, value: any) => void;
     getColumnSettings: (field: TableField) => CommonTableV2ColumnSettings;
+
+    /** drop the selection column altogether (e.g. a read-only audit log) */
+    selectable?: boolean;
+    /** selection is a list of ids plus a "select all on this page" header checkbox */
+    multiSelect?: boolean;
+    /** the caller renders its own footer instead of the built-in paginator */
+    hidePaginator?: boolean;
+    /** drop the filter row even when columns declare filters */
+    hideFilterRow?: boolean;
+    /** slice `dbData.data` locally and count from it, instead of trusting `dbData.count` */
+    internalPaging?: boolean;
+    /** per-row style, e.g. to mark a row whose dependencies cannot be read */
+    getRowSx?: CommonTableV2RowSx;
+    /** rendered in a full-width row underneath its row; a nullish result renders nothing */
+    renderDetail?: (row: any) => ReactNode;
+    /** adds the chevron column that toggles a row's detail panel */
+    expandable?: boolean;
+    isRowExpanded?: (row: any, id: string) => boolean;
+    onToggleExpand?: (row: any, id: string) => void;
+    drag?: CommonTableV2RowDrag;
+    /** rendered above the table, inside the same surface */
+    toolbarSlot?: ReactNode;
+    /**
+     * Namespace of the persisted column widths. Defaults to `elementType`, which two lists of
+     * the same collection on different screens would share and overwrite for each other.
+     */
+    storageKeyPrefix?: string;
 };
 
 type ColumnWidths = Record<string, number>;
 
 const DEFAULT_COL_WIDTH = 160;
-const CHECKBOX_COL_WIDTH = 44;
+const CONTROL_COL_WIDTH = 44;
 const MIN_COL_WIDTH = 60;
+const HEADER_ROW_HEIGHT = 32;
 
-const getStoredWidth = (
-    elementType: string,
-    field: string,
-): number | undefined => {
-    const v = localStorage.getItem(`${elementType}.${field}.column.width`);
+const getStoredWidth = (prefix: string, field: string): number | undefined => {
+    const v = localStorage.getItem(`${prefix}.${field}.column.width`);
     if (!v) return undefined;
     const n = parseInt(v, 10);
     return Number.isFinite(n) ? n : undefined;
 };
 
-const storeWidth = (elementType: string, field: string, width: number) => {
+const storeWidth = (prefix: string, field: string, width: number) => {
     localStorage.setItem(
-        `${elementType}.${field}.column.width`,
+        `${prefix}.${field}.column.width`,
         String(Math.round(width)),
     );
 };
@@ -86,25 +124,53 @@ const replaceFilter = (
     return list;
 };
 
+const toIdList = (selected: CommonTableV2State['selected']): Array<string> => {
+    if (Array.isArray(selected)) return selected;
+    return selected === undefined || selected === '' ? [] : [selected];
+};
+
 export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const {
         elementType,
         fields,
         idProperty = '_id',
+        getRowId,
         dbData,
         dbState,
         onDoubleClick,
         pageSizes,
         updateDbState,
         getColumnSettings,
+        selectable = true,
+        multiSelect = false,
+        hidePaginator = false,
+        hideFilterRow = false,
+        internalPaging = false,
+        getRowSx,
+        renderDetail,
+        expandable = false,
+        isRowExpanded,
+        onToggleExpand,
+        drag,
+        toolbarSlot,
+        storageKeyPrefix,
     } = props;
 
-    const { data: rows, count } = dbData;
     const { selected, skip, loading, limit, sort, filter } = dbState;
 
     const { t } = useTranslation();
 
-    const theme = useTheme();
+    const widthPrefix = storageKeyPrefix || elementType;
+
+    const resolveRowId = useCallback(
+        (row: any, index: number): string =>
+            String(
+                getRowId
+                    ? getRowId(row, index)
+                    : (row?.[idProperty] ?? row?.id ?? row?.name ?? index),
+            ),
+        [getRowId, idProperty],
+    );
 
     const visibleFields = useMemo(
         () => fields.filter((f) => !f.hidden),
@@ -119,7 +185,9 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         const initial: ColumnWidths = {};
         visibleFields.forEach((f) => {
             initial[f.field] =
-                getStoredWidth(elementType, f.field) ?? DEFAULT_COL_WIDTH;
+                getStoredWidth(widthPrefix, f.field) ??
+                f.width ??
+                DEFAULT_COL_WIDTH;
         });
         return initial;
     });
@@ -127,15 +195,37 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     useEffect(() => {
         setWidths((prev) => {
             const next: ColumnWidths = {};
+            let changed = Object.keys(prev).length !== visibleFields.length;
             visibleFields.forEach((f) => {
                 next[f.field] =
                     prev[f.field] ??
-                    getStoredWidth(elementType, f.field) ??
+                    getStoredWidth(widthPrefix, f.field) ??
+                    f.width ??
                     DEFAULT_COL_WIDTH;
+                if (next[f.field] !== prev[f.field]) changed = true;
             });
-            return next;
+            /* a fresh object on every run would re-enter this effect through `widths` below */
+            return changed ? next : prev;
         });
-    }, [elementType, visibleFields]);
+    }, [widthPrefix, visibleFields]);
+
+    /* ---------- rows on screen ---------- */
+    const { data, count: reportedCount } = dbData;
+
+    const rows = useMemo(() => {
+        if (!internalPaging) return data;
+        return data.slice(skip, skip + limit);
+    }, [internalPaging, data, skip, limit]);
+
+    const count = internalPaging ? data.length : reportedCount;
+    const rowOffset = internalPaging ? skip : 0;
+
+    const rowIds = useMemo(
+        () => rows.map((row, idx) => resolveRowId(row, rowOffset + idx)),
+        [rows, rowOffset, resolveRowId],
+    );
+
+    const selectedIds = useMemo(() => new Set(toIdList(selected)), [selected]);
 
     const onSortClick = (fieldName: string) => {
         if (loading) return;
@@ -152,10 +242,12 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     };
 
     const onFilterChange = useCallback(
-        (filterName: string, change: FilterChange) => {
-            const existing = findFilter(filter, filterName);
-            if (!existing) return;
+        (field: TableField, change: FilterChange) => {
+            const existing = findFilter(filter, field.field);
+            /* seeding is the caller's job, but a missing entry must not swallow the change */
             const nextEntry: CommonTableV2FilterValue = {
+                name: field.field,
+                type: existing?.type ?? field.type,
                 ...existing,
                 operator: change.operator,
                 value: change.value,
@@ -165,14 +257,41 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         [filter, updateDbState],
     );
 
+    const emitSelection = useCallback(
+        (ids: Array<string>) => {
+            updateDbState(
+                'selected',
+                multiSelect ? ids : (ids[0] ?? undefined),
+            );
+        },
+        [multiSelect, updateDbState],
+    );
+
     const handleRowClick = (id: string) => {
-        if (loading) return;
-        updateDbState('selected', selected === id ? undefined : id);
+        if (loading || !selectable) return;
+        if (selectedIds.has(id)) {
+            emitSelection(toIdList(selected).filter((item) => item !== id));
+            return;
+        }
+        emitSelection(multiSelect ? [...toIdList(selected), id] : [id]);
     };
 
-    const handleRowDoubleClick = (id: string) => {
+    const handleRowDoubleClick = (id: string, row: any) => {
         if (loading || !onDoubleClick) return;
-        onDoubleClick(id);
+        onDoubleClick(id, row);
+    };
+
+    const isAllSelected =
+        rowIds.length > 0 && rowIds.every((id) => selectedIds.has(id));
+    const isPartiallySelected =
+        !isAllSelected && rowIds.some((id) => selectedIds.has(id));
+
+    const handleSelectAll = () => {
+        if (loading) return;
+        const onPage = new Set(rowIds);
+        const offPage = toIdList(selected).filter((id) => !onPage.has(id));
+        /* the selection survives paging, so only this page's ids are added or dropped */
+        emitSelection(isAllSelected ? offPage : [...offPage, ...rowIds]);
     };
 
     /* ---------- column resize ---------- */
@@ -180,6 +299,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         field: string;
         startX: number;
         startWidth: number;
+        minWidth: number;
     } | null>(null);
 
     useEffect(() => {
@@ -187,14 +307,14 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             const r = resizingRef.current;
             if (!r) return;
             const delta = e.clientX - r.startX;
-            const next = Math.max(MIN_COL_WIDTH, r.startWidth + delta);
+            const next = Math.max(r.minWidth, r.startWidth + delta);
             setWidths((prev) => ({ ...prev, [r.field]: next }));
         };
         const onUp = () => {
             const r = resizingRef.current;
             if (r) {
                 storeWidth(
-                    elementType,
+                    widthPrefix,
                     r.field,
                     widths[r.field] ?? r.startWidth,
                 );
@@ -209,18 +329,30 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
         };
-    }, [elementType, widths]);
+    }, [widthPrefix, widths]);
 
-    const startResize = (field: string, e: React.MouseEvent) => {
+    const startResize = (field: TableField, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         resizingRef.current = {
-            field,
+            field: field.field,
             startX: e.clientX,
-            startWidth: widths[field] ?? DEFAULT_COL_WIDTH,
+            startWidth: widths[field.field] ?? DEFAULT_COL_WIDTH,
+            minWidth: field.minWidth ?? MIN_COL_WIDTH,
         };
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+    };
+
+    /* ---------- row reorder ---------- */
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+    const onRowDrop = (targetIndex: number, targetRow: any) => {
+        const from = dragIndex;
+        setDragIndex(null);
+        if (from === null || from === targetIndex) return;
+        if (drag?.isDragDisabled?.(targetRow)) return;
+        drag?.onRowOrderChange(from, targetIndex);
     };
 
     /* ---------- render ---------- */
@@ -236,27 +368,38 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         );
     };
 
+    /* leading columns, in render order; every one of them owns a <col> and a header cell */
+    const leadingColumns: Array<'drag' | 'expand' | 'select'> = [];
+    if (drag) leadingColumns.push('drag');
+    if (expandable) leadingColumns.push('expand');
+    if (selectable) leadingColumns.push('select');
+
+    const columnCount = leadingColumns.length + visibleFields.length;
+
+    const hasFilterRow =
+        !hideFilterRow && columnSettings.some((setting) => setting.filter);
+
     const totalColWidth =
-        CHECKBOX_COL_WIDTH +
+        leadingColumns.length * CONTROL_COL_WIDTH +
         visibleFields.reduce(
             (s, f) => s + (widths[f.field] ?? DEFAULT_COL_WIDTH),
             0,
         );
 
-    const headerCellSx = {
-        bgcolor: grey[100],
-        position: 'sticky' as const,
+    const headerCellSx: SxProps<Theme> = {
+        bgcolor: 'background.default',
+        position: 'sticky',
         top: 0,
         zIndex: 2,
         padding: '4px 8px',
         borderRight: 1,
         borderColor: 'divider',
-        ...theme.applyStyles('dark', {
-            backgroundColor: '#2c2c2c',
-            '&:hover': {
-                backgroundColor: '#3a3a3a',
-            },
-        }),
+    };
+
+    const filterCellSx: SxProps<Theme> = {
+        ...(headerCellSx as object),
+        top: HEADER_ROW_HEIGHT,
+        padding: '2px 4px',
     };
 
     return (
@@ -268,6 +411,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                 position: 'relative',
                 bgcolor: 'background.paper',
             }}>
+            {toolbarSlot}
             {loading && (
                 <LinearProgress
                     sx={{
@@ -288,6 +432,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                     pointerEvents: loading ? 'none' : 'auto',
                 }}>
                 <Table
+                    role='grid'
                     size='small'
                     stickyHeader
                     sx={{
@@ -298,7 +443,12 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                         borderSpacing: 0,
                     }}>
                     <colgroup>
-                        <col style={{ width: CHECKBOX_COL_WIDTH }} />
+                        {leadingColumns.map((kind) => (
+                            <col
+                                key={`lead-${kind}`}
+                                style={{ width: CONTROL_COL_WIDTH }}
+                            />
+                        ))}
                         {visibleFields.map((f) => (
                             <col
                                 key={f.field}
@@ -310,15 +460,36 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                     </colgroup>
                     <TableHead>
                         {/* row 1: title + sort */}
-                        <TableRow>
-                            <TableCell
-                                rowSpan={1}
-                                sx={{
-                                    ...headerCellSx,
-                                    height: 32,
-                                    textAlign: 'center',
-                                }}
-                            />
+                        <TableRow role='row'>
+                            {leadingColumns.map((kind) => (
+                                <TableCell
+                                    key={`lead-h-${kind}`}
+                                    role='columnheader'
+                                    data-field={`__${kind}__`}
+                                    sx={{
+                                        ...(headerCellSx as object),
+                                        height: HEADER_ROW_HEIGHT,
+                                        textAlign: 'center',
+                                        padding: 0,
+                                    }}>
+                                    {kind === 'select' && multiSelect ? (
+                                        <Checkbox
+                                            size='small'
+                                            color='secondary'
+                                            checked={isAllSelected}
+                                            indeterminate={isPartiallySelected}
+                                            disabled={loading}
+                                            onChange={handleSelectAll}
+                                            slotProps={{
+                                                input: {
+                                                    'aria-label':
+                                                        'select all items',
+                                                },
+                                            }}
+                                        />
+                                    ) : null}
+                                </TableCell>
+                            ))}
                             {visibleFields.map((field, idx) => {
                                 const setting = columnSettings[idx];
                                 const tag = field.i18nTag ?? field.field;
@@ -326,14 +497,15 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                 return (
                                     <TableCell
                                         key={`h-${field.field}`}
+                                        role='columnheader'
+                                        data-field={field.field}
                                         sx={{
-                                            ...headerCellSx,
-                                            position: 'sticky',
-                                            top: 0,
+                                            ...(headerCellSx as object),
                                             cursor: sortable
                                                 ? 'pointer'
                                                 : 'default',
                                             userSelect: 'none',
+                                            textAlign: field.align ?? 'left',
                                         }}
                                         onClick={
                                             sortable
@@ -357,10 +529,11 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
                                                 }}>
-                                                {t(
-                                                    `details:${elementType}.fields.${tag}`,
-                                                    tag,
-                                                )}
+                                                {field.label ??
+                                                    t(
+                                                        `details:${elementType}.fields.${tag}`,
+                                                        tag,
+                                                    )}
                                             </Typography>
                                             {sortable && (
                                                 <Box
@@ -375,7 +548,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                             )}
                                             <Box
                                                 onMouseDown={(e) =>
-                                                    startResize(field.field, e)
+                                                    startResize(field, e)
                                                 }
                                                 sx={{
                                                     position: 'absolute',
@@ -393,56 +566,55 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                             })}
                         </TableRow>
                         {/* row 2: filters */}
-                        <TableRow>
-                            <TableCell
-                                rowSpan={1}
-                                sx={{
-                                    ...headerCellSx,
-                                    position: 'sticky',
-                                    top: 32,
-                                }}
-                            />
-                            {visibleFields.map((field, idx) => {
-                                const setting = columnSettings[idx];
-                                const FilterComp = setting.filter as
-                                    React.FC<any> | undefined;
-                                const fv = findFilter(filter, field.field);
-                                return (
+                        {hasFilterRow && (
+                            <TableRow role='row'>
+                                {leadingColumns.map((kind) => (
                                     <TableCell
-                                        key={`f-${field.field}`}
-                                        sx={{
-                                            ...headerCellSx,
-                                            position: 'sticky',
-                                            top: 32,
-                                            padding: '2px 4px',
-                                        }}>
-                                        {FilterComp && fv && (
-                                            <FilterComp
-                                                filter={fv}
-                                                disabled={loading}
-                                                filterProps={
-                                                    setting.filterProps
-                                                }
-                                                onChange={(
-                                                    change: FilterChange,
-                                                ) =>
-                                                    onFilterChange(
-                                                        field.field,
-                                                        change,
-                                                    )
-                                                }
-                                            />
-                                        )}
-                                    </TableCell>
-                                );
-                            })}
-                        </TableRow>
+                                        key={`lead-f-${kind}`}
+                                        sx={filterCellSx}
+                                    />
+                                ))}
+                                {visibleFields.map((field, idx) => {
+                                    const setting = columnSettings[idx];
+                                    const FilterComp = setting.filter as
+                                        React.FC<any> | undefined;
+                                    const fv = findFilter(filter, field.field);
+                                    return (
+                                        <TableCell
+                                            key={`f-${field.field}`}
+                                            data-field={field.field}
+                                            sx={filterCellSx}>
+                                            {FilterComp && fv && (
+                                                <FilterComp
+                                                    filter={fv}
+                                                    disabled={loading}
+                                                    filterProps={
+                                                        setting.filterProps
+                                                    }
+                                                    operators={
+                                                        setting.operators
+                                                    }
+                                                    onChange={(
+                                                        change: FilterChange,
+                                                    ) =>
+                                                        onFilterChange(
+                                                            field,
+                                                            change,
+                                                        )
+                                                    }
+                                                />
+                                            )}
+                                        </TableCell>
+                                    );
+                                })}
+                            </TableRow>
+                        )}
                     </TableHead>
                     <TableBody>
                         {rows.length === 0 && !loading && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={visibleFields.length + 1}
+                                    colSpan={columnCount}
                                     sx={{
                                         textAlign: 'center',
                                         py: 4,
@@ -453,56 +625,192 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                             </TableRow>
                         )}
                         {rows.map((row, idx) => {
-                            const id = row?.[idProperty];
-                            const isSelected = selected === id;
+                            const id = rowIds[idx];
+                            const isSelected = selectedIds.has(id);
+                            const expanded = expandable
+                                ? (isRowExpanded?.(row, id) ??
+                                  dbState.expanded?.includes(id) ??
+                                  false)
+                                : false;
+                            const detail = renderDetail?.(row);
+                            const dragDisabled = Boolean(
+                                drag?.isDragDisabled?.(row),
+                            );
+                            const draggable = Boolean(drag) && !dragDisabled;
                             return (
-                                <TableRow
-                                    key={idx}
-                                    hover
-                                    selected={isSelected}
-                                    onClick={() => handleRowClick(id)}
-                                    onDoubleClick={() =>
-                                        handleRowDoubleClick(id)
-                                    }
-                                    sx={{ cursor: 'pointer' }}>
-                                    <TableCell
-                                        padding='checkbox'
+                                <React.Fragment key={id}>
+                                    <TableRow
+                                        role='row'
+                                        data-id={id}
+                                        hover
+                                        selected={isSelected}
+                                        draggable={draggable}
+                                        onDragStart={
+                                            draggable
+                                                ? () =>
+                                                      setDragIndex(
+                                                          rowOffset + idx,
+                                                      )
+                                                : undefined
+                                        }
+                                        onDragOver={
+                                            drag
+                                                ? (e) => e.preventDefault()
+                                                : undefined
+                                        }
+                                        onDrop={
+                                            drag
+                                                ? () =>
+                                                      onRowDrop(
+                                                          rowOffset + idx,
+                                                          row,
+                                                      )
+                                                : undefined
+                                        }
+                                        onClick={() => handleRowClick(id)}
+                                        onDoubleClick={() =>
+                                            handleRowDoubleClick(id, row)
+                                        }
                                         sx={{
-                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            ...((getRowSx?.(row) ??
+                                                {}) as object),
                                         }}>
-                                        <Checkbox
-                                            size='small'
-                                            checked={isSelected}
-                                            disabled={loading}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onChange={() => handleRowClick(id)}
-                                        />
-                                    </TableCell>
-                                    {visibleFields.map((field, idx) => {
-                                        const setting = columnSettings[idx];
-                                        const raw = row?.[field.field];
-                                        const node =
-                                            setting.renderValue?.({
-                                                key: field.field,
-                                                value: raw,
-                                                data: row,
-                                            }) ?? raw;
-                                        return (
+                                        {leadingColumns.map((kind) => {
+                                            if (kind === 'drag') {
+                                                return (
+                                                    <TableCell
+                                                        key='c-drag'
+                                                        padding='none'
+                                                        sx={{
+                                                            textAlign: 'center',
+                                                        }}>
+                                                        {dragDisabled ? null : (
+                                                            <DragIndicatorIcon
+                                                                fontSize='small'
+                                                                sx={{
+                                                                    cursor: 'grab',
+                                                                    color: 'text.secondary',
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </TableCell>
+                                                );
+                                            }
+                                            if (kind === 'expand') {
+                                                return (
+                                                    <TableCell
+                                                        key='c-expand'
+                                                        padding='none'
+                                                        sx={{
+                                                            textAlign: 'center',
+                                                        }}>
+                                                        <IconButton
+                                                            size='small'
+                                                            sx={{
+                                                                transform: `rotate(${expanded ? 180 : 0}deg)`,
+                                                                transition:
+                                                                    'transform 0.3s ease-in-out',
+                                                            }}
+                                                            onClick={(
+                                                                event,
+                                                            ) => {
+                                                                event.preventDefault();
+                                                                event.stopPropagation();
+                                                                onToggleExpand?.(
+                                                                    row,
+                                                                    id,
+                                                                );
+                                                            }}>
+                                                            <ExpandMoreIcon fontSize='small' />
+                                                        </IconButton>
+                                                    </TableCell>
+                                                );
+                                            }
+                                            return (
+                                                <TableCell
+                                                    key='c-select'
+                                                    padding='checkbox'
+                                                    sx={{
+                                                        textAlign: 'center',
+                                                    }}>
+                                                    <Checkbox
+                                                        size='small'
+                                                        color='secondary'
+                                                        checked={isSelected}
+                                                        disabled={loading}
+                                                        onClick={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                        onChange={() =>
+                                                            handleRowClick(id)
+                                                        }
+                                                    />
+                                                </TableCell>
+                                            );
+                                        })}
+                                        {visibleFields.map((field, colIdx) => {
+                                            const setting =
+                                                columnSettings[colIdx];
+                                            const raw = row?.[field.field];
+                                            /* `?? raw` here would put the untouched value —
+                                             * an object among them — on screen whenever a
+                                             * renderer deliberately returned nothing */
+                                            const node = setting.renderValue
+                                                ? setting.renderValue({
+                                                      key: field.field,
+                                                      value: raw,
+                                                      data: row,
+                                                  })
+                                                : raw;
+                                            return (
+                                                <TableCell
+                                                    key={`c-${field.field}`}
+                                                    data-field={field.field}
+                                                    sx={{
+                                                        padding: '4px 8px',
+                                                        borderRight: 1,
+                                                        borderColor: 'divider',
+                                                        textAlign:
+                                                            field.align ??
+                                                            'left',
+                                                        ...(field.nowrap
+                                                            ? {
+                                                                  whiteSpace:
+                                                                      'nowrap',
+                                                                  overflow:
+                                                                      'hidden',
+                                                                  textOverflow:
+                                                                      'ellipsis',
+                                                              }
+                                                            : {
+                                                                  whiteSpace:
+                                                                      'normal',
+                                                                  wordBreak:
+                                                                      'break-word',
+                                                              }),
+                                                    }}>
+                                                    {node as ReactNode}
+                                                </TableCell>
+                                            );
+                                        })}
+                                    </TableRow>
+                                    {detail ? (
+                                        <TableRow
+                                            data-detail-for={id}
+                                            sx={{
+                                                '&:hover': {
+                                                    bgcolor: 'transparent',
+                                                },
+                                            }}>
                                             <TableCell
-                                                key={`c-${field.field}-${id}`}
-                                                sx={{
-                                                    padding: '4px 8px',
-                                                    borderRight: 1,
-                                                    borderColor: 'divider',
-                                                    whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                }}>
-                                                {node as React.ReactNode}
+                                                colSpan={columnCount}
+                                                sx={{ padding: 0, border: 0 }}>
+                                                {detail}
                                             </TableCell>
-                                        );
-                                    })}
-                                </TableRow>
+                                        </TableRow>
+                                    ) : null}
+                                </React.Fragment>
                             );
                         })}
                     </TableBody>
@@ -521,16 +829,18 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                     </Box>
                 )}
             </TableContainer>
-            <CommonTablePaginator
-                skip={skip}
-                limit={limit}
-                count={count}
-                pageSizes={pageSizes}
-                disabled={loading}
-                onRefresh={() => updateDbState('limit', limit)}
-                onSkipChange={(skip) => updateDbState('skip', skip)}
-                onLimitChange={(limit) => updateDbState('limit', limit)}
-            />
+            {!hidePaginator && (
+                <CommonTablePaginator
+                    skip={skip}
+                    limit={limit}
+                    count={count}
+                    pageSizes={pageSizes}
+                    disabled={loading}
+                    onRefresh={() => updateDbState('limit', limit)}
+                    onSkipChange={(next) => updateDbState('skip', next)}
+                    onLimitChange={(next) => updateDbState('limit', next)}
+                />
+            )}
         </Box>
     );
 };

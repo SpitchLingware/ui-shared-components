@@ -13,12 +13,25 @@ export type FilterEditorProps = {
         timezone: string;
         format: string;
     };
+    /** replaces the filter's built-in operator list; see CommonTableV2ColumnSettings.operators */
+    operators?: Array<OperatorOption>;
 };
 
 export type OperatorOption = {
     name: string;
     /* i18n key suffix under table:table.* */
     label: string;
+};
+
+/** Keeps the built-in list when the column names no subset, and never yields an empty menu. */
+export const resolveOperators = (
+    operators: Array<OperatorOption> | undefined,
+    fallback: Array<OperatorOption>,
+): Array<OperatorOption> => {
+    if (!operators?.length) return fallback;
+    const allowed = new Set(operators.map((operator) => operator.name));
+    const narrowed = fallback.filter((operator) => allowed.has(operator.name));
+    return narrowed.length ? narrowed : operators;
 };
 
 export const RANGE_OPERATORS = new Set(['inrange', 'notinrange']);

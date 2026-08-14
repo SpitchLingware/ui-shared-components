@@ -63,6 +63,39 @@ describe('resolveLayoutWidths', () => {
         ).toEqual({ _id: 70, name: 465, tags: 465 });
     });
 
+    /**
+     * A button column holds a control of its own size, so widening it only pushes that control
+     * into empty space. The old grid excluded those columns from its autosize pass for the same
+     * reason - and a column that explicitly asks to stretch still gets to.
+     */
+    it('leaves a column of buttons out of the leftover, unless it asked for it', () => {
+        const fields = [
+            field({ field: 'name' }),
+            field({ field: 'run', type: 'action', minWidth: 72 }),
+        ];
+        expect(
+            widthsOf(
+                resolveLayoutWidths({
+                    fields,
+                    widths: {},
+                    availableWidth: 1000,
+                    hasUserResized: false,
+                }),
+            ),
+        ).toEqual({ name: 840, run: 160 });
+
+        expect(
+            widthsOf(
+                resolveLayoutWidths({
+                    fields: [fields[0], field({ ...fields[1], stretch: true })],
+                    widths: {},
+                    availableWidth: 1000,
+                    hasUserResized: false,
+                }),
+            ),
+        ).toEqual({ name: 160, run: 840 });
+    });
+
     it('splits the leftover between several stretch columns', () => {
         const fields = [
             field({ field: 'a', stretch: true }),

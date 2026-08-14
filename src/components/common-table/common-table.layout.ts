@@ -25,7 +25,8 @@ export type ResolveLayoutWidthsParams = {
  * - before the user has resized anything, it goes to the columns marked `stretch`, or - where
  *   none is marked - to every column the config did not pin to a width. That reproduces the old
  *   grid's `flex: 1`, and is why an id column pinned to 70px stays 70px however wide the window
- *   gets.
+ *   gets. A column of buttons is never picked for this: it holds a control of its own size, and
+ *   growing it leaves that control adrift in empty space.
  * - from the first resize on, the widths on screen are the user's own, so the space is shared
  *   in their proportion instead and their ratios survive a window resize.
  */
@@ -50,7 +51,10 @@ export const resolveLayoutWidths = ({
         const stretchFields = fields.filter((field) => field.stretch);
         const flexible = stretchFields.length
             ? stretchFields
-            : fields.filter((field) => field.width === undefined);
+            : fields.filter(
+                  (field) =>
+                      field.width === undefined && field.type !== 'action',
+              );
 
         if (flexible.length) {
             const share = (availableWidth - total) / flexible.length;

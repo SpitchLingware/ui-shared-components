@@ -13,6 +13,7 @@ import {
     resolveOperators,
     SELECT_OPERATORS,
 } from '../types/filter.types';
+import { FilterOptionSearch } from './FilterOptionSearch';
 import { OperatorMenu } from './OperatorMenu';
 
 type Option = { id: string; label: string };
@@ -48,8 +49,10 @@ export const SelectFilterV2: React.FC<Props> = ({
 }) => {
     const { t } = useTranslation();
     const multiple = filterProps?.multiple !== false;
+    const searchable = Boolean(filterProps?.searchable);
     const operatorOptions = resolveOperators(operators, SELECT_OPERATORS);
     const [options, setOptions] = useState<Option[]>([]);
+    const [search, setSearch] = useState('');
     const selected = normalizeValue(filter.value);
 
     const [open, setOpen] = useState(false);
@@ -103,6 +106,19 @@ export const SelectFilterV2: React.FC<Props> = ({
         '& .MuiInputBase-root': { fontSize: '0.8rem' },
     } as const;
 
+    const needle = search.trim().toLowerCase();
+    const visibleOptions = needle
+        ? options.filter(
+              (option) =>
+                  String(option.label ?? '')
+                      .toLowerCase()
+                      .includes(needle) ||
+                  String(option.id ?? '')
+                      .toLowerCase()
+                      .includes(needle),
+          )
+        : options;
+
     if (!multiple) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -116,6 +132,11 @@ export const SelectFilterV2: React.FC<Props> = ({
                             displayEmpty: true,
                             renderValue: (val) =>
                                 renderLabel(val ? [String(val)] : []),
+                            onClose: () => setSearch(''),
+                            MenuProps: {
+                                PaperProps: { sx: { maxHeight: 320 } },
+                                MenuListProps: { autoFocusItem: false },
+                            },
                         },
                     }}
                     onChange={(e) => {
@@ -126,8 +147,14 @@ export const SelectFilterV2: React.FC<Props> = ({
                         });
                     }}
                     sx={sx}>
+                    {searchable && (
+                        <FilterOptionSearch
+                            value={search}
+                            onChange={setSearch}
+                        />
+                    )}
                     <MenuItem value=''>—</MenuItem>
-                    {options.map((o) => (
+                    {visibleOptions.map((o) => (
                         <MenuItem key={o.id} value={o.id}>
                             <ListItemText primary={o.label} />
                         </MenuItem>

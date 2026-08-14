@@ -11,6 +11,9 @@ import { OperatorMenu } from './OperatorMenu';
 
 type RangeValue = { start?: number | ''; end?: number | '' };
 
+/** operators that ask about the presence of a value, so there is nothing to type */
+const VALUELESS = new Set(['empty', 'notEmpty']);
+
 const toRange = (raw: any): RangeValue => {
     if (raw && typeof raw === 'object') {
         return { start: raw.start ?? '', end: raw.end ?? '' };
@@ -37,6 +40,7 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
     operators,
 }) => {
     const isRange = RANGE_OPERATORS.has(filter.operator);
+    const valueless = VALUELESS.has(filter.operator);
 
     const [scalar, setScalar] = useState<string>(toScalar(filter.value));
     const [range, setRange] = useState<RangeValue>(toRange(filter.value));
@@ -56,7 +60,18 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            {isRange ? (
+            {valueless ? (
+                <TextField
+                    size='small'
+                    value=''
+                    disabled
+                    sx={{
+                        flex: 1,
+                        bgcolor: 'background.paper',
+                        '& .MuiInputBase-root': { fontSize: '0.8rem' },
+                    }}
+                />
+            ) : isRange ? (
                 <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
                     <TextField
                         size='small'
@@ -122,12 +137,17 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
                 onChange={(operator) => {
                     pushChange.cancel();
                     const becomingRange = RANGE_OPERATORS.has(operator);
-                    if (becomingRange && !isRange) {
+                    if (VALUELESS.has(operator)) {
+                        onChange({ value: '', operator });
+                    } else if (becomingRange && !isRange) {
                         onChange({ value: { start: '', end: '' }, operator });
                     } else if (!becomingRange && isRange) {
                         onChange({ value: '', operator });
                     } else {
-                        onChange({ value: filter.value, operator });
+                        onChange({
+                            value: valueless ? '' : filter.value,
+                            operator,
+                        });
                     }
                 }}
             />

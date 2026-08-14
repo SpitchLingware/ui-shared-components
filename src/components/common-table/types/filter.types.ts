@@ -12,6 +12,11 @@ export type FilterEditorProps = {
     filterProps: {
         timezone: string;
         format: string;
+        /** what a boolean column calls its two values, when they are not "yes" and "no" */
+        trueLabel?: string;
+        falseLabel?: string;
+        /** put a type-ahead box inside the dropdown; for lists too long to scan */
+        searchable?: boolean;
     };
     /** replaces the filter's built-in operator list; see CommonTableV2ColumnSettings.operators */
     operators?: Array<OperatorOption>;
@@ -56,6 +61,10 @@ export const NUMBER_OPERATORS: OperatorOption[] = [
     { name: 'lte', label: 'lte' },
     { name: 'inrange', label: 'inrange' },
     { name: 'notinrange', label: 'notinrange' },
+    /* "has no value at all" is not a comparison, but it is the question asked of a numeric
+     * column most often, and only this list can offer it */
+    { name: 'empty', label: 'empty' },
+    { name: 'notEmpty', label: 'notEmpty' },
 ];
 
 export const DATE_OPERATORS: OperatorOption[] = [

@@ -13,8 +13,16 @@ export const BoolFilterV2: React.FC<FilterEditorProps> = ({
     disabled,
     onChange,
     operators,
+    filterProps,
 }) => {
     const { t } = useTranslation();
+
+    /* a boolean column rarely renders "yes" and "no": it says Active/Archived, Enabled/Disabled.
+     * The filter has to offer the words the column itself shows, or it names two states the
+     * reader cannot find in the list. */
+    const trueLabel = filterProps?.trueLabel || t('table:table.true', 'true');
+    const falseLabel =
+        filterProps?.falseLabel || t('table:table.false', 'false');
 
     const current =
         filter.value === true || filter.value === 'true'
@@ -43,12 +51,8 @@ export const BoolFilterV2: React.FC<FilterEditorProps> = ({
                     '& .MuiInputBase-root': { fontSize: '0.8rem' },
                 }}>
                 <MenuItem value=''>—</MenuItem>
-                <MenuItem value='true'>
-                    {t('table:table.true', 'true')}
-                </MenuItem>
-                <MenuItem value='false'>
-                    {t('table:table.false', 'false')}
-                </MenuItem>
+                <MenuItem value='true'>{trueLabel}</MenuItem>
+                <MenuItem value='false'>{falseLabel}</MenuItem>
             </TextField>
             <OperatorMenu
                 operator={filter.operator}

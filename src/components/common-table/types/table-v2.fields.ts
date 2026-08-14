@@ -27,6 +27,20 @@ type BaseField = {
     i18nTag?: string;
     render?: (params: TableFieldParams) => ReactNode;
     hidden?: boolean;
+    /** The operator the column starts on, when the one its type defaults to is
+     *  the wrong question to ask. A phone number or an e-mail is looked for by
+     *  a fragment, so such a column says `contains` and does not leave the
+     *  operator menu as the only way to get there.
+     */
+    operator?: string;
+    /** `false` keeps the column out of the filter panel: no chip, and the
+     *  «add a filter» menu does not offer it.
+     *
+     *  It does NOT drop the column's entry from the filter list — that list is
+     *  also the projection the backend selects by, so dropping an entry takes
+     *  the column out of the response. The entry travels on, empty.
+     */
+    filterable?: boolean;
 };
 
 export type TableNumberField = BaseField & {

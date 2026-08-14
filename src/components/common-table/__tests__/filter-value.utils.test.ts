@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { defaultFilterFor } from '../common-table.utils';
+import {
+    defaultFilterFor,
+    getDefaultFilterValues,
+} from '../common-table.utils';
 import {
     clearFilters,
     describeFilterValue,
@@ -102,6 +105,27 @@ describe('the default a column is reset to', () => {
         ).toBe('eq');
     });
 
+    it('the column may name the operator its type would not have picked', () => {
+        /* a phone number or an e-mail is searched for by a fragment, and
+           «starts with» — the default for text — answers nothing */
+        expect(
+            defaultFilterFor({
+                field: 'user_data.id',
+                type: 'text',
+                operator: 'contains',
+            }).operator,
+        ).toBe('contains');
+
+        /* and it still overrides the special case for _id */
+        expect(
+            defaultFilterFor({
+                field: '_id',
+                type: 'text',
+                operator: 'contains',
+            }).operator,
+        ).toBe('contains');
+    });
+
     it('carries the object column its path back', () => {
         const resolved: any = defaultFilterFor({
             field: 'skills',
@@ -113,6 +137,39 @@ describe('the default a column is reset to', () => {
         expect(resolved.path).toBe('skills');
         expect(resolved.key).toBe('name');
         expect(resolved.predicates).toHaveLength(1);
+    });
+});
+
+describe('a column the panel does not offer', () => {
+    const fields: Array<TableField> = [
+        { field: 'create_date', type: 'date' },
+        { field: 'number', type: 'text', operator: 'contains' },
+        { field: 'direction', type: 'text', filterable: false },
+    ];
+
+    it('still travels in the filter list — it is the projection', () => {
+        const values = getDefaultFilterValues(fields, {});
+        expect(values.map((f) => f.name)).toEqual([
+            'create_date',
+            'number',
+            'direction',
+        ]);
+    });
+
+    it('drops a value restored from storage instead of filtering blind', () => {
+        /* the value was stored while the column was still filterable; with no
+           chip to clear it the table would come back filtered by something the
+           operator cannot see */
+        const values = getDefaultFilterValues(fields, {
+            number: '7700',
+            direction: 'in',
+        });
+        expect(values[1].value).toBe('7700');
+        expect(values[2].value).toBe('');
+    });
+
+    it('keeps the operator the column asked for', () => {
+        expect(getDefaultFilterValues(fields, {})[1].operator).toBe('contains');
     });
 });
 

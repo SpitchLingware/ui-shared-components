@@ -1,9 +1,6 @@
 import { CommonTableV2FilterValue, TableField } from './types';
 
-/** The untouched filter entry for a column: the operator the column starts
- *  with and an empty value. Also what «Сбросить» puts a column back to.
- */
-export const defaultFilterFor = (
+const defaultFilterByType = (
     field: TableField,
     value: any = '',
 ): CommonTableV2FilterValue => {
@@ -88,10 +85,27 @@ export const defaultFilterFor = (
     }
 };
 
+/** The untouched filter entry for a column: the operator the column starts
+ *  with and an empty value. Also what «Сбросить» puts a column back to.
+ */
+export const defaultFilterFor = (
+    field: TableField,
+    value: any = '',
+): CommonTableV2FilterValue => {
+    const entry = defaultFilterByType(field, value);
+    return field.operator ? { ...entry, operator: field.operator } : entry;
+};
+
 export const getDefaultFilterValues = (
     fields: Array<TableField>,
     values: Record<string, string>,
 ): Array<CommonTableV2FilterValue> =>
     fields.map((field: TableField) =>
-        defaultFilterFor(field, values[field.field] ?? ''),
+        defaultFilterFor(
+            field,
+            /* a column the panel does not show has no way back to empty, so a
+               value restored from storage would filter the table invisibly —
+               that happens the moment a column stops being filterable */
+            field.filterable === false ? '' : (values[field.field] ?? ''),
+        ),
     );

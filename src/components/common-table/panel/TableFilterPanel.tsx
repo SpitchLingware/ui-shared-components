@@ -80,6 +80,9 @@ export const TableFilterPanel: React.FC<Props> = ({
                 const setting = columnSettings[idx];
                 const entry = filter?.find((f) => f.name === field.field);
                 if (!setting?.filter || !entry) return undefined;
+                /* the entry stays in the list either way — the panel just
+                   stops offering it (see TableField.filterable) */
+                if (field.filterable === false) return undefined;
                 const tag = field.i18nTag ?? field.field;
                 return {
                     field,

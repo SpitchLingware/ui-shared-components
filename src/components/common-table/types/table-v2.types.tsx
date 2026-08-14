@@ -57,4 +57,8 @@ export type CommonTableV2RowDrag<T = any> = {
     isDragDisabled?: (row: T) => boolean;
 };
 
-export type CommonTableV2RowSx = (row: any) => SxProps<Theme> | undefined;
+/** `id` is the identity the table resolved for the row - recomputing it elsewhere diverges */
+export type CommonTableV2RowSx = (
+    row: any,
+    id: string,
+) => SxProps<Theme> | undefined;

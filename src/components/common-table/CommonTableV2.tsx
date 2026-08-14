@@ -814,7 +814,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                 onDoubleClick
                                                     ? 'pointer'
                                                     : 'default',
-                                            ...((getRowSx?.(row) ??
+                                            ...((getRowSx?.(row, id) ??
                                                 {}) as object),
                                         }}>
                                         {leadingColumns.map((kind) => {

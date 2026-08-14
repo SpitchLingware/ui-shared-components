@@ -1,3 +1,4 @@
+export * from './common-table.layout';
 export * from './common-table.utils';
 export * from './CommonTablePaginator';
 export * from './CommonTableV2';

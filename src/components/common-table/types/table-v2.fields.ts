@@ -32,6 +32,12 @@ type BaseField = {
     align?: 'left' | 'center' | 'right';
     /** collapse the cell to one line with an ellipsis instead of wrapping */
     nowrap?: boolean;
+    /**
+     * This column absorbs whatever width is left over. It stops doing so once the user resizes
+     * a column by hand: from then on the free space is shared proportionally, so the widths
+     * they set keep their ratio to each other.
+     */
+    stretch?: boolean;
 };
 
 export type TableNumberField = BaseField & {

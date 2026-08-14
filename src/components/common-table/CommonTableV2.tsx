@@ -30,6 +30,13 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { CommonTablePaginator } from './CommonTablePaginator';
 import {
+    ColumnWidths,
+    CONTROL_COL_WIDTH,
+    DEFAULT_COL_WIDTH,
+    MIN_COL_WIDTH,
+    resolveLayoutWidths,
+} from './common-table.layout';
+import {
     CommonTableV2ColumnSettings,
     CommonTableV2Data,
     CommonTableV2FilterValue,
@@ -84,6 +91,12 @@ type Props = {
     isRowExpanded?: (row: any, id: string) => boolean;
     onToggleExpand?: (row: any, id: string) => void;
     drag?: CommonTableV2RowDrag;
+    /**
+     * Enables dragging column headers into a different order. The order is controlled: the
+     * table reports the new list of field names and the consumer re-orders `fields` and
+     * persists it, the same way `dbState` works.
+     */
+    onFieldsOrderChange?: (fields: Array<string>) => void;
     /** rendered above the table, inside the same surface */
     toolbarSlot?: ReactNode;
     /**
@@ -93,11 +106,6 @@ type Props = {
     storageKeyPrefix?: string;
 };
 
-type ColumnWidths = Record<string, number>;
-
-const DEFAULT_COL_WIDTH = 160;
-const CONTROL_COL_WIDTH = 44;
-const MIN_COL_WIDTH = 60;
 const HEADER_ROW_HEIGHT = 32;
 
 const getStoredWidth = (prefix: string, field: string): number | undefined => {
@@ -159,6 +167,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         isRowExpanded,
         onToggleExpand,
         drag,
+        onFieldsOrderChange,
         toolbarSlot,
         storageKeyPrefix,
     } = props;
@@ -183,6 +192,15 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         () => fields.filter((f) => !f.hidden),
         [fields],
     );
+
+    /* leading columns, in render order; every one of them owns a <col> and a header cell */
+    const leadingColumns = useMemo(() => {
+        const kinds: Array<'drag' | 'expand' | 'select'> = [];
+        if (drag) kinds.push('drag');
+        if (expandable) kinds.push('expand');
+        if (selectable) kinds.push('select');
+        return kinds;
+    }, [drag, expandable, selectable]);
 
     const columnSettings = useMemo(() => {
         return visibleFields.map((f) => getColumnSettings(f));
@@ -215,6 +233,61 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             return changed ? next : prev;
         });
     }, [widthPrefix, visibleFields]);
+
+    /**
+     * A stored width exists only where the user dragged one, so its presence is what tells the
+     * two layout modes apart: fill (one column takes the slack) and proportional.
+     */
+    const [hasUserResized, setHasUserResized] = useState(() =>
+        visibleFields.some(
+            (f) => getStoredWidth(widthPrefix, f.field) !== undefined,
+        ),
+    );
+
+    useEffect(() => {
+        setHasUserResized(
+            (prev) =>
+                prev ||
+                visibleFields.some(
+                    (f) => getStoredWidth(widthPrefix, f.field) !== undefined,
+                ),
+        );
+    }, [widthPrefix, visibleFields]);
+
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    const [containerWidth, setContainerWidth] = useState(0);
+
+    useEffect(() => {
+        const node = scrollRef.current;
+        /* jsdom has no ResizeObserver; without a measurement the columns keep their own widths */
+        if (!node || typeof ResizeObserver === 'undefined') return;
+        const observer = new ResizeObserver((entries) => {
+            const width = entries[0]?.contentRect?.width ?? 0;
+            setContainerWidth((prev) =>
+                Math.abs(prev - width) < 1 ? prev : width,
+            );
+        });
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
+    const layoutWidths = useMemo(
+        () =>
+            resolveLayoutWidths({
+                fields: visibleFields,
+                widths,
+                availableWidth:
+                    containerWidth - leadingColumns.length * CONTROL_COL_WIDTH,
+                hasUserResized,
+            }),
+        [
+            visibleFields,
+            widths,
+            containerWidth,
+            leadingColumns.length,
+            hasUserResized,
+        ],
+    );
 
     /* ---------- rows on screen ---------- */
     const { data, count: reportedCount } = dbData;
@@ -320,11 +393,15 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         const onUp = () => {
             const r = resizingRef.current;
             if (r) {
-                storeWidth(
-                    widthPrefix,
-                    r.field,
-                    widths[r.field] ?? r.startWidth,
-                );
+                /* every column is written, not just the dragged one: the others are on screen
+                 * at the width the fill mode gave them, and a reload has to find them there */
+                visibleFields.forEach((f) => {
+                    storeWidth(
+                        widthPrefix,
+                        f.field,
+                        widths[f.field] ?? f.width ?? DEFAULT_COL_WIDTH,
+                    );
+                });
             }
             resizingRef.current = null;
             document.body.style.cursor = '';
@@ -336,19 +413,41 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             window.removeEventListener('mousemove', onMove);
             window.removeEventListener('mouseup', onUp);
         };
-    }, [widthPrefix, widths]);
+    }, [widthPrefix, widths, visibleFields]);
 
     const startResize = (field: TableField, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        /* freeze what is on screen before the first drag, so grabbing a stretched column does
+         * not make it jump back to its unstretched width */
+        setWidths(layoutWidths);
+        setHasUserResized(true);
         resizingRef.current = {
             field: field.field,
             startX: e.clientX,
-            startWidth: widths[field.field] ?? DEFAULT_COL_WIDTH,
+            startWidth: layoutWidths[field.field] ?? DEFAULT_COL_WIDTH,
             minWidth: field.minWidth ?? MIN_COL_WIDTH,
         };
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+    };
+
+    /* ---------- column reorder ---------- */
+    const [draggedField, setDraggedField] = useState<string | null>(null);
+    const canReorderColumns = Boolean(onFieldsOrderChange);
+
+    const dropColumn = (targetField: string) => {
+        const source = draggedField;
+        setDraggedField(null);
+        if (!source || source === targetField || !onFieldsOrderChange) return;
+
+        const order = visibleFields.map((f) => f.field);
+        const from = order.indexOf(source);
+        const to = order.indexOf(targetField);
+        if (from < 0 || to < 0) return;
+
+        order.splice(to, 0, ...order.splice(from, 1));
+        onFieldsOrderChange(order);
     };
 
     /* ---------- row reorder ---------- */
@@ -375,12 +474,6 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         );
     };
 
-    /* leading columns, in render order; every one of them owns a <col> and a header cell */
-    const leadingColumns: Array<'drag' | 'expand' | 'select'> = [];
-    if (drag) leadingColumns.push('drag');
-    if (expandable) leadingColumns.push('expand');
-    if (selectable) leadingColumns.push('select');
-
     const columnCount = leadingColumns.length + visibleFields.length;
 
     const hasFilterRow =
@@ -389,7 +482,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const totalColWidth =
         leadingColumns.length * CONTROL_COL_WIDTH +
         visibleFields.reduce(
-            (s, f) => s + (widths[f.field] ?? DEFAULT_COL_WIDTH),
+            (s, f) => s + (layoutWidths[f.field] ?? DEFAULT_COL_WIDTH),
             0,
         );
 
@@ -432,6 +525,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                 />
             )}
             <TableContainer
+                ref={scrollRef}
                 sx={{
                     flex: 1,
                     overflow: 'auto',
@@ -460,7 +554,9 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                             <col
                                 key={f.field}
                                 style={{
-                                    width: widths[f.field] ?? DEFAULT_COL_WIDTH,
+                                    width:
+                                        layoutWidths[f.field] ??
+                                        DEFAULT_COL_WIDTH,
                                 }}
                             />
                         ))}
@@ -506,13 +602,43 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                         key={`h-${field.field}`}
                                         role='columnheader'
                                         data-field={field.field}
+                                        draggable={canReorderColumns}
+                                        onDragStart={(event) => {
+                                            /* the resize handle lives inside this cell; grabbing
+                                             * it must not start a column drag */
+                                            if (resizingRef.current) {
+                                                event.preventDefault();
+                                                return;
+                                            }
+                                            event.dataTransfer.effectAllowed =
+                                                'move';
+                                            setDraggedField(field.field);
+                                        }}
+                                        onDragOver={
+                                            canReorderColumns
+                                                ? (event) =>
+                                                      event.preventDefault()
+                                                : undefined
+                                        }
+                                        onDrop={
+                                            canReorderColumns
+                                                ? () => dropColumn(field.field)
+                                                : undefined
+                                        }
+                                        onDragEnd={() => setDraggedField(null)}
                                         sx={{
                                             ...(headerCellSx as object),
                                             cursor: sortable
                                                 ? 'pointer'
-                                                : 'default',
+                                                : canReorderColumns
+                                                  ? 'grab'
+                                                  : 'default',
                                             userSelect: 'none',
                                             textAlign: field.align ?? 'left',
+                                            opacity:
+                                                draggedField === field.field
+                                                    ? 0.5
+                                                    : 1,
                                         }}
                                         onClick={
                                             sortable

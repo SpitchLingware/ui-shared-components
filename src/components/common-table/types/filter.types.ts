@@ -8,6 +8,9 @@ export type FilterChange = {
 export type FilterEditorProps = {
     filter: CommonTableV2FilterValue;
     disabled?: boolean;
+    /** report every keystroke instead of debouncing: the editor sits in a
+     *  popover whose «Применить» may land before the debounce fires */
+    immediate?: boolean;
     onChange: (next: FilterChange) => void;
     filterProps: {
         timezone: string;

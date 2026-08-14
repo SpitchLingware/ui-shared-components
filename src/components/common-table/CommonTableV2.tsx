@@ -3,6 +3,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import {
     Box,
+    Button,
     Checkbox,
     CircularProgress,
     LinearProgress,
@@ -24,7 +25,10 @@ import React, {
     useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { defaultFilterFor } from './common-table.utils';
 import { CommonTablePaginator } from './CommonTablePaginator';
+import { valueHasTime } from './filters/date-filter.utils';
+import { isFilterActive, TableFilterPanel } from './panel';
 import {
     CommonTableV2ColumnSettings,
     CommonTableV2Data,
@@ -44,6 +48,8 @@ type Props = {
     dbData: CommonTableV2Data;
     onDoubleClick?: (id: string) => void;
     pageSizes?: number[];
+    /** set false to keep the table bare — the filters then have no UI at all */
+    showFilterPanel?: boolean;
     updateDbState: (field: keyof CommonTableV2State, value: any) => void;
     getColumnSettings: (field: TableField) => CommonTableV2ColumnSettings;
 };
@@ -71,6 +77,8 @@ const storeWidth = (elementType: string, field: string, width: number) => {
     );
 };
 
+const withTimeKey = (storageKey: string) => `${storageKey}.filter.withTime`;
+
 const findFilter = (
     filter: Array<CommonTableV2FilterValue> | undefined,
     name: string,
@@ -97,6 +105,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         dbState,
         onDoubleClick,
         pageSizes,
+        showFilterPanel = true,
         updateDbState,
         getColumnSettings,
     } = props;
@@ -116,6 +125,31 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const columnSettings = useMemo(() => {
         return visibleFields.map((f) => getColumnSettings(f));
     }, [visibleFields, getColumnSettings]);
+
+    /* the time switch belongs to the table, not to a single bound: it decides
+       the mask of every date field and outlives the page */
+    const [withTime, setWithTime] = useState<boolean>(() => {
+        const stored = localStorage.getItem(withTimeKey(storageKey));
+        if (stored !== null) return stored === 'true';
+        return visibleFields.some((f, idx) => {
+            if (f.type !== 'date') return false;
+            const props = columnSettings[idx]?.filterProps;
+            const entry = findFilter(filter, f.field);
+            return Boolean(
+                props?.format &&
+                    entry &&
+                    valueHasTime(entry.value, props.format, props.timezone),
+            );
+        });
+    });
+
+    const changeWithTime = useCallback(
+        (next: boolean) => {
+            setWithTime(next);
+            localStorage.setItem(withTimeKey(storageKey), String(next));
+        },
+        [storageKey],
+    );
 
     const [widths, setWidths] = useState<ColumnWidths>(() => {
         const initial: ColumnWidths = {};
@@ -165,6 +199,25 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             updateDbState('filter', replaceFilter(filter, nextEntry));
         },
         [filter, updateDbState],
+    );
+
+    /* an entry is put back to its default, never dropped: the filter list is
+       also the projection the backend selects the columns by */
+    const resetFilters = useCallback(() => {
+        if (!filter?.length) return;
+        const byName = new Map(fields.map((f) => [f.field, f]));
+        updateDbState(
+            'filter',
+            filter.map((entry) => {
+                const field = byName.get(entry.name);
+                return field ? { ...entry, ...defaultFilterFor(field) } : entry;
+            }),
+        );
+    }, [fields, filter, updateDbState]);
+
+    const anyFilterActive = useMemo(
+        () => (filter ?? []).some(isFilterActive),
+        [filter],
     );
 
     const handleRowClick = (id: string) => {
@@ -229,12 +282,14 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const renderSortIcon = (fieldName: string) => {
         const cur = sort;
         if (!cur || cur.name !== fieldName) {
-            return <SwapVertIcon fontSize='inherit' sx={{ opacity: 0.35 }} />;
+            return (
+                <SwapVertIcon sx={{ fontSize: 14, color: 'grey.400' }} />
+            );
         }
         return cur.dir === 1 ? (
-            <ArrowUpwardIcon fontSize='inherit' />
+            <ArrowUpwardIcon sx={{ fontSize: 16, color: 'primary.main' }} />
         ) : (
-            <ArrowDownwardIcon fontSize='inherit' />
+            <ArrowDownwardIcon sx={{ fontSize: 16, color: 'primary.main' }} />
         );
     };
 
@@ -246,11 +301,12 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         );
 
     const headerCellSx = {
-        bgcolor: grey[100],
+        bgcolor: grey[50],
         position: 'sticky' as const,
         top: 0,
         zIndex: 2,
-        padding: '4px 8px',
+        padding: '8px',
+        borderBottom: '2px solid',
         borderRight: 1,
         borderColor: 'divider',
         ...theme.applyStyles('dark', {
@@ -280,6 +336,19 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                         zIndex: 3,
                         height: 2,
                     }}
+                />
+            )}
+            {showFilterPanel && (
+                <TableFilterPanel
+                    elementType={elementType}
+                    fields={visibleFields}
+                    columnSettings={columnSettings}
+                    filter={filter}
+                    disabled={loading}
+                    time={withTime}
+                    onTimeChange={changeWithTime}
+                    onFilterChange={onFilterChange}
+                    onResetAll={resetFilters}
                 />
             )}
             <TableContainer
@@ -353,7 +422,9 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                             <Typography
                                                 variant='caption'
                                                 sx={{
-                                                    fontWeight: 600,
+                                                    fontWeight: 700,
+                                                    textTransform: 'uppercase',
+                                                    color: 'text.primary',
                                                     flex: 1,
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
@@ -394,51 +465,6 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                 );
                             })}
                         </TableRow>
-                        {/* row 2: filters */}
-                        <TableRow>
-                            <TableCell
-                                rowSpan={1}
-                                sx={{
-                                    ...headerCellSx,
-                                    position: 'sticky',
-                                    top: 32,
-                                }}
-                            />
-                            {visibleFields.map((field, idx) => {
-                                const setting = columnSettings[idx];
-                                const FilterComp = setting.filter as
-                                    React.FC<any> | undefined;
-                                const fv = findFilter(filter, field.field);
-                                return (
-                                    <TableCell
-                                        key={`f-${field.field}`}
-                                        sx={{
-                                            ...headerCellSx,
-                                            position: 'sticky',
-                                            top: 32,
-                                            padding: '2px 4px',
-                                        }}>
-                                        {FilterComp && fv && (
-                                            <FilterComp
-                                                filter={fv}
-                                                disabled={loading}
-                                                filterProps={
-                                                    setting.filterProps
-                                                }
-                                                onChange={(
-                                                    change: FilterChange,
-                                                ) =>
-                                                    onFilterChange(
-                                                        field.field,
-                                                        change,
-                                                    )
-                                                }
-                                            />
-                                        )}
-                                    </TableCell>
-                                );
-                            })}
-                        </TableRow>
                     </TableHead>
                     <TableBody>
                         {rows.length === 0 && !loading && (
@@ -450,7 +476,33 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                         py: 4,
                                         color: 'text.secondary',
                                     }}>
-                                    {t('table:table.noRecords', 'No records')}
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                        }}>
+                                        {anyFilterActive
+                                            ? t(
+                                                  'table:table.nothing_found',
+                                                  'Nothing found',
+                                              )
+                                            : t(
+                                                  'table:table.noRecords',
+                                                  'No records',
+                                              )}
+                                        {anyFilterActive && (
+                                            <Button
+                                                size='small'
+                                                onClick={resetFilters}>
+                                                {t(
+                                                    'table:table.reset_filters',
+                                                    'Reset the filters',
+                                                )}
+                                            </Button>
+                                        )}
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         )}

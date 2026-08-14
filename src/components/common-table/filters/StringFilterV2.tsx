@@ -9,6 +9,7 @@ const VALUELESS = new Set(['empty', 'notEmpty']);
 export const StringFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
+    immediate,
     onChange,
 }) => {
     const [local, setLocal] = useState<string>(
@@ -20,13 +21,12 @@ export const StringFilterV2: React.FC<FilterEditorProps> = ({
         setLocal(next);
     }, [filter.value]);
 
-    const pushChange = useMemo(
-        () =>
-            debounce((value: string, operator: string) => {
-                onChange({ value, operator });
-            }, 400),
-        [onChange],
-    );
+    const pushChange = useMemo(() => {
+        const push = (value: string, operator: string) =>
+            onChange({ value, operator });
+        if (immediate) return Object.assign(push, { cancel: () => {} });
+        return debounce(push, 400);
+    }, [immediate, onChange]);
 
     const valueless = VALUELESS.has(filter.operator);
 

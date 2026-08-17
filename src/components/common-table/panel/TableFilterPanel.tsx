@@ -1,4 +1,5 @@
 import AddIcon from '@mui/icons-material/Add';
+import ClearIcon from '@mui/icons-material/Clear';
 import EventIcon from '@mui/icons-material/Event';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -52,6 +53,18 @@ type Column = {
 
 const CONTROL_HEIGHT = 34;
 
+const Separator: React.FC = () => (
+    <Box
+        sx={{
+            width: '1px',
+            height: 20,
+            flexShrink: 0,
+            bgcolor: 'divider',
+            display: { xs: 'none', sm: 'block' },
+        }}
+    />
+);
+
 export const TableFilterPanel: React.FC<Props> = ({
     elementType,
     fields,
@@ -98,7 +111,8 @@ export const TableFilterPanel: React.FC<Props> = ({
     const period = columns.find((c) => isDateField(c.field));
     const rest = columns.filter((c) => c !== period);
     const activeRest = rest.filter((c) => c.active);
-    const anyActive = activeRest.length > 0 || Boolean(period?.active);
+    /* the period counts as one of them — it is reset by the same button */
+    const activeCount = activeRest.length + (period?.active ? 1 : 0);
 
     const edited = editing
         ? columns.find((c) => c.field.field === editing.name)
@@ -241,14 +255,7 @@ export const TableFilterPanel: React.FC<Props> = ({
             )}
 
             {period && (activeRest.length > 0 || addColumns.length > 0) && (
-                <Box
-                    sx={{
-                        width: '1px',
-                        height: 20,
-                        bgcolor: 'divider',
-                        display: { xs: 'none', sm: 'block' },
-                    }}
-                />
+                <Separator />
             )}
 
             {narrow ? (
@@ -280,21 +287,42 @@ export const TableFilterPanel: React.FC<Props> = ({
                 chips
             )}
 
-            {anyActive && (
-                <Button
-                    size='small'
-                    color='inherit'
-                    disabled={disabled}
-                    onClick={onResetAll}
-                    sx={{
-                        ml: 'auto',
-                        height: 26,
-                        fontSize: '0.75rem',
-                        color: 'text.secondary',
-                        textTransform: 'none',
-                    }}>
-                    {t('table:table.reset_all', 'Reset all')}
-                </Button>
+            {activeCount > 0 && (
+                <>
+                    {/* the reset follows the chips instead of being pushed to
+                        the far edge — on a wide table `ml: 'auto'` put it half
+                        a screen away from the thing it resets, and once the row
+                        wrapped it was left alone on a second line */}
+                    <Separator />
+                    <Button
+                        size='small'
+                        color='inherit'
+                        disabled={disabled}
+                        onClick={onResetAll}
+                        startIcon={<ClearIcon sx={{ fontSize: 16 }} />}
+                        sx={{
+                            height: 26,
+                            px: 1,
+                            flexShrink: 0,
+                            fontSize: '0.75rem',
+                            fontWeight: 400,
+                            textTransform: 'none',
+                            whiteSpace: 'nowrap',
+                            color: 'text.secondary',
+                            '& .MuiButton-startIcon': { mr: 0.5 },
+                            /* it throws work away, so it reads as destructive
+                               the moment the pointer is on it */
+                            '&:hover': {
+                                color: 'error.main',
+                                bgcolor: 'error.lighter',
+                            },
+                        }}>
+                        {t('table:table.reset_count', {
+                            n: activeCount,
+                            defaultValue: 'Reset ({{n}})',
+                        })}
+                    </Button>
+                </>
             )}
 
             <Popover

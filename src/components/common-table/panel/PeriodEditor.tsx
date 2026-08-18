@@ -50,6 +50,14 @@ const overlineSx = {
 
 const labelSx = { fontSize: '0.75rem', fontWeight: 500 };
 
+const PANEL_WIDTH = 168;
+/* the editor pane: two bounds side by side. With the time on a bound reads
+   `YYYY-MM-DD HH:mm`, whose placeholder is wider than the date one — without
+   the extra room the second picker is pushed past the popover's edge and
+   clipped, because a text field's min-content width outgrows its half. */
+const EDITOR_WIDTH = 392;
+const EDITOR_WIDTH_WITH_TIME = 452;
+
 const toRange = (raw: any) =>
     isRangeValue(raw)
         ? { start: raw.start ?? '', end: raw.end ?? '' }
@@ -166,10 +174,19 @@ export const PeriodEditor: React.FC<Props> = ({
     };
 
     return (
-        <Box sx={{ display: 'flex', width: { xs: 'auto', sm: 560 } }}>
+        <Box
+            sx={{
+                display: 'flex',
+                width: {
+                    xs: 'auto',
+                    sm:
+                        PANEL_WIDTH +
+                        (time && isRange ? EDITOR_WIDTH_WITH_TIME : EDITOR_WIDTH),
+                },
+            }}>
             <Box
                 sx={{
-                    width: 168,
+                    width: PANEL_WIDTH,
                     flexShrink: 0,
                     borderRight: '1px solid',
                     borderColor: 'divider',
@@ -197,7 +214,9 @@ export const PeriodEditor: React.FC<Props> = ({
             <Box
                 sx={{
                     flex: 1,
-                    minWidth: 0,
+                    /* narrow: no quick-select column, so the pane carries the
+                       whole popover — keep the bounds readable */
+                    minWidth: { xs: 260, sm: 0 },
                     p: 2,
                     display: 'flex',
                     flexDirection: 'column',
@@ -296,7 +315,12 @@ export const PeriodEditor: React.FC<Props> = ({
                     <Box
                         sx={{
                             display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
+                            /* minmax(0, …): a picker's min-content width must
+                               not widen its track past the popover */
+                            gridTemplateColumns: {
+                                xs: 'minmax(0, 1fr)',
+                                sm: 'minmax(0, 1fr) minmax(0, 1fr)',
+                            },
                             gap: 1.5,
                         }}>
                         {renderPicker(

@@ -1,41 +1,39 @@
 import { Box, Chip, ChipProps, Tooltip } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-    CommonTableV2ColumnSettings,
-    CommonTableV2FilterValue,
-    TableField,
-} from '../types';
-import { describeFilterValue, isOptionField } from './filter-value.utils';
+import { columnSummary } from './column-summary';
+import { isOptionField } from './filter-value.utils';
 import { useOptionLabel } from './useFilterOptions';
+import { FilterColumn } from './useFilterColumns';
 
 type Props = {
-    field: TableField;
-    setting: CommonTableV2ColumnSettings;
-    filter: CommonTableV2FilterValue;
-    title: string;
+    column: FilterColumn;
     disabled?: boolean;
+    /** short form for the narrow layout */
+    compact?: boolean;
     onOpen: (anchor: HTMLElement) => void;
     onDelete: () => void;
 };
 
 export const FilterChipItem: React.FC<Props> = ({
-    field,
-    setting,
-    filter,
-    title,
+    column,
     disabled,
+    compact,
     onOpen,
     onDelete,
 }) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const { field, setting, title } = column;
+
     const optionLabel = useOptionLabel(
         isOptionField(field) ? setting.filterProps?.dataSource : undefined,
     );
 
-    const summary = describeFilterValue(filter, {
-        operatorLabel: (op) => t(`table:table.${op}`, op),
+    const summary = columnSummary(column, {
+        locale: i18n.language,
+        compact,
         optionLabel,
+        operatorLabel: (op) => t(`table:table.${op}`, op),
         boolLabel: (v) => t(`table:table.${v}`, String(v)),
         moreLabel: (count) => t('table:table.more_count', { count }),
     });

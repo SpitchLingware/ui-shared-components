@@ -1,4 +1,5 @@
-export * from './AddFilterMenu';
+export * from './column-summary';
+export * from './ColumnFilterButton';
 export * from './EditorFooter';
 export * from './filter-value.utils';
 export * from './FilterChipItem';
@@ -7,5 +8,6 @@ export * from './period.utils';
 export * from './PeriodEditor';
 export * from './SelectOptionList';
 export * from './TableFilterPanel';
+export * from './useFilterColumns';
 export * from './useFilterOptions';
 export * from './ValueEditor';

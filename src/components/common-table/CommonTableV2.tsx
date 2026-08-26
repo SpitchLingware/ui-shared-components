@@ -28,7 +28,15 @@ import { useTranslation } from 'react-i18next';
 import { defaultFilterFor } from './common-table.utils';
 import { CommonTablePaginator } from './CommonTablePaginator';
 import { valueHasTime } from './filters/date-filter.utils';
-import { isFilterActive, TableFilterPanel } from './panel';
+import {
+    ColumnFilterButton,
+    FilterColumn,
+    FilterPopover,
+    isFilterActive,
+    TableFilterPanel,
+    useFilterColumnMap,
+    useFilterColumns,
+} from './panel';
 import {
     CommonTableV2ColumnSettings,
     CommonTableV2Data,
@@ -48,7 +56,11 @@ type Props = {
     dbData: CommonTableV2Data;
     onDoubleClick?: (id: string) => void;
     pageSizes?: number[];
-    /** set false to keep the table bare — the filters then have no UI at all */
+    /** set false to take the filter icon out of the column headers */
+    showColumnFilters?: boolean;
+    /** set false to drop the strip of active filters above the table; with
+     *  `showColumnFilters` off too the table is bare and the filters have no
+     *  UI at all */
     showFilterPanel?: boolean;
     updateDbState: (field: keyof CommonTableV2State, value: any) => void;
     getColumnSettings: (field: TableField) => CommonTableV2ColumnSettings;
@@ -59,6 +71,7 @@ type ColumnWidths = Record<string, number>;
 const DEFAULT_COL_WIDTH = 160;
 const CHECKBOX_COL_WIDTH = 44;
 const MIN_COL_WIDTH = 60;
+const HEADER_HEIGHT = 32;
 
 const getStoredWidth = (
     elementType: string,
@@ -105,6 +118,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         dbState,
         onDoubleClick,
         pageSizes,
+        showColumnFilters = true,
         showFilterPanel = true,
         updateDbState,
         getColumnSettings,
@@ -125,6 +139,23 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const columnSettings = useMemo(() => {
         return visibleFields.map((f) => getColumnSettings(f));
     }, [visibleFields, getColumnSettings]);
+
+    /* the columns a filter can be set on, shared by the header icons and the
+       strip of chips above the table: both open the same editor */
+    const filterColumns = useFilterColumns({
+        elementType,
+        fields: visibleFields,
+        columnSettings,
+        filter,
+    });
+    const filterByName = useFilterColumnMap(filterColumns);
+
+    const [editing, setEditing] = useState<{
+        name: string;
+        anchor: HTMLElement;
+    } | null>(null);
+
+    const edited = editing ? filterByName.get(editing.name) : undefined;
 
     /* the time switch belongs to the table, not to a single bound: it decides
        the mask of every date field and outlives the page */
@@ -199,6 +230,12 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             updateDbState('filter', replaceFilter(filter, nextEntry));
         },
         [filter, updateDbState],
+    );
+
+    const removeFilter = useCallback(
+        (column: FilterColumn) =>
+            onFilterChange(column.field.field, defaultFilterFor(column.field)),
+        [onFilterChange],
     );
 
     /* an entry is put back to its default, never dropped: the filter list is
@@ -317,6 +354,15 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         }),
     };
 
+    /* the filler swallows whatever the container is wider by, so the space is
+       not spread over the real columns — that is what keeps the checkbox one
+       at exactly CHECKBOX_COL_WIDTH */
+    const fillerCellSx = {
+        padding: 0,
+        borderRight: 0,
+        borderColor: 'divider',
+    };
+
     return (
         <Box
             sx={{
@@ -340,14 +386,12 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
             )}
             {showFilterPanel && (
                 <TableFilterPanel
-                    elementType={elementType}
-                    fields={visibleFields}
-                    columnSettings={columnSettings}
-                    filter={filter}
+                    columns={filterColumns}
                     disabled={loading}
-                    time={withTime}
-                    onTimeChange={changeWithTime}
-                    onFilterChange={onFilterChange}
+                    onOpen={(column, anchor) =>
+                        setEditing({ name: column.field.field, anchor })
+                    }
+                    onRemove={removeFilter}
                     onResetAll={resetFilters}
                 />
             )}
@@ -378,15 +422,20 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                 }}
                             />
                         ))}
+                        {/* the one column without a width: with
+                            `table-layout: fixed` the slack lands here */}
+                        <col />
                     </colgroup>
                     <TableHead>
-                        {/* row 1: title + sort */}
+                        {/* row 1: title + sort + filter */}
                         <TableRow>
                             <TableCell
                                 rowSpan={1}
                                 sx={{
                                     ...headerCellSx,
-                                    height: 32,
+                                    height: HEADER_HEIGHT,
+                                    width: CHECKBOX_COL_WIDTH,
+                                    padding: 0,
                                     textAlign: 'center',
                                 }}
                             />
@@ -394,6 +443,9 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                 const setting = columnSettings[idx];
                                 const tag = field.i18nTag ?? field.field;
                                 const sortable = setting.sortable ?? true;
+                                const filterColumn = filterByName.get(
+                                    field.field,
+                                );
                                 return (
                                     <TableCell
                                         key={`h-${field.field}`}
@@ -415,7 +467,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                             sx={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: 0.5,
+                                                gap: 0.25,
                                                 pr: '6px',
                                                 position: 'relative',
                                             }}>
@@ -426,6 +478,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                     textTransform: 'uppercase',
                                                     color: 'text.primary',
                                                     flex: 1,
+                                                    minWidth: 0,
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
@@ -446,6 +499,23 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                     )}
                                                 </Box>
                                             )}
+                                            {showColumnFilters &&
+                                                filterColumn && (
+                                                    <ColumnFilterButton
+                                                        column={filterColumn}
+                                                        disabled={loading}
+                                                        open={
+                                                            editing?.name ===
+                                                            field.field
+                                                        }
+                                                        onOpen={(anchor) =>
+                                                            setEditing({
+                                                                name: field.field,
+                                                                anchor,
+                                                            })
+                                                        }
+                                                    />
+                                                )}
                                             <Box
                                                 onMouseDown={(e) =>
                                                     startResize(field.field, e)
@@ -464,13 +534,16 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                     </TableCell>
                                 );
                             })}
+                            <TableCell
+                                sx={{ ...headerCellSx, ...fillerCellSx }}
+                            />
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {rows.length === 0 && !loading && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={visibleFields.length + 1}
+                                    colSpan={visibleFields.length + 2}
                                     sx={{
                                         textAlign: 'center',
                                         py: 4,
@@ -522,6 +595,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                     <TableCell
                                         padding='checkbox'
                                         sx={{
+                                            width: CHECKBOX_COL_WIDTH,
                                             textAlign: 'center',
                                         }}>
                                         <Checkbox
@@ -556,6 +630,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                             </TableCell>
                                         );
                                     })}
+                                    <TableCell sx={fillerCellSx} />
                                 </TableRow>
                             );
                         })}
@@ -575,6 +650,21 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                     </Box>
                 )}
             </TableContainer>
+            {editing && edited && (
+                <FilterPopover
+                    anchorEl={editing.anchor}
+                    field={edited.field}
+                    setting={edited.setting}
+                    filter={edited.filter}
+                    title={edited.title}
+                    time={withTime}
+                    onTimeChange={changeWithTime}
+                    onApply={(change) =>
+                        onFilterChange(edited.field.field, change)
+                    }
+                    onClose={() => setEditing(null)}
+                />
+            )}
             <CommonTablePaginator
                 skip={skip}
                 limit={limit}

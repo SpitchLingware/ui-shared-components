@@ -1,189 +1,38 @@
-import AddIcon from '@mui/icons-material/Add';
 import ClearIcon from '@mui/icons-material/Clear';
-import EventIcon from '@mui/icons-material/Event';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import ScheduleIcon from '@mui/icons-material/Schedule';
-import {
-    Badge,
-    Box,
-    Button,
-    ButtonBase,
-    Popover,
-    Typography,
-    useMediaQuery,
-    useTheme,
-} from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import { Box, Button, useMediaQuery, useTheme } from '@mui/material';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { defaultFilterFor } from '../common-table.utils';
-import {
-    CommonTableV2ColumnSettings,
-    CommonTableV2FilterValue,
-    FilterChange,
-    TableField,
-} from '../types';
-import { AddFilterColumn, AddFilterMenu } from './AddFilterMenu';
 import { FilterChipItem } from './FilterChipItem';
-import { FilterPopover } from './FilterPopover';
-import { isDateField, isFilterActive } from './filter-value.utils';
-import { periodLabel } from './period.utils';
+import { FilterColumn } from './useFilterColumns';
 
 type Props = {
-    /** i18n namespace the column labels are read from */
-    elementType: string;
-    fields: Array<TableField>;
-    columnSettings: Array<CommonTableV2ColumnSettings>;
-    filter?: Array<CommonTableV2FilterValue>;
+    columns: Array<FilterColumn>;
     disabled?: boolean;
-    time: boolean;
-    onTimeChange: (next: boolean) => void;
-    onFilterChange: (name: string, change: FilterChange) => void;
+    onOpen: (column: FilterColumn, anchor: HTMLElement) => void;
+    onRemove: (column: FilterColumn) => void;
     onResetAll: () => void;
 };
 
-type Column = {
-    field: TableField;
-    setting: CommonTableV2ColumnSettings;
-    filter: CommonTableV2FilterValue;
-    title: string;
-    active: boolean;
-};
-
-const CONTROL_HEIGHT = 34;
-
-const Separator: React.FC = () => (
-    <Box
-        sx={{
-            width: '1px',
-            height: 20,
-            flexShrink: 0,
-            bgcolor: 'divider',
-            display: { xs: 'none', sm: 'block' },
-        }}
-    />
-);
-
+/** What the table is currently narrowed down to, and the one button that
+ *  undoes all of it.
+ *
+ *  Filters are set in the column headers, so the strip has nothing to offer
+ *  while none of them is set — it stays out of the way until there is
+ *  something to report.
+ */
 export const TableFilterPanel: React.FC<Props> = ({
-    elementType,
-    fields,
-    columnSettings,
-    filter,
+    columns,
     disabled,
-    time,
-    onTimeChange,
-    onFilterChange,
+    onOpen,
+    onRemove,
     onResetAll,
 }) => {
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const theme = useTheme();
     const narrow = useMediaQuery(theme.breakpoints.down('sm'));
 
-    const [editing, setEditing] = useState<{
-        name: string;
-        anchor: HTMLElement;
-    } | null>(null);
-    const [addAnchor, setAddAnchor] = useState<HTMLElement | null>(null);
-    const [listAnchor, setListAnchor] = useState<HTMLElement | null>(null);
-
-    const columns = useMemo((): Array<Column> => {
-        return fields
-            .map((field, idx) => {
-                const setting = columnSettings[idx];
-                const entry = filter?.find((f) => f.name === field.field);
-                if (!setting?.filter || !entry) return undefined;
-                /* the entry stays in the list either way — the panel just
-                   stops offering it (see TableField.filterable) */
-                if (field.filterable === false) return undefined;
-                const tag = field.i18nTag ?? field.field;
-                return {
-                    field,
-                    setting,
-                    filter: entry,
-                    title: t(`details:${elementType}.fields.${tag}`, tag),
-                    active: isFilterActive(entry),
-                };
-            })
-            .filter(Boolean) as Array<Column>;
-    }, [fields, columnSettings, filter, elementType, t]);
-
-    const period = columns.find((c) => isDateField(c.field));
-    const rest = columns.filter((c) => c !== period);
-    const activeRest = rest.filter((c) => c.active);
-    /* the period counts as one of them — it is reset by the same button */
-    const activeCount = activeRest.length + (period?.active ? 1 : 0);
-
-    const edited = editing
-        ? columns.find((c) => c.field.field === editing.name)
-        : undefined;
-
-    const openEditor = (column: Column, anchor: HTMLElement) => {
-        setAddAnchor(null);
-        setEditing({ name: column.field.field, anchor });
-    };
-
-    const removeFilter = (column: Column) =>
-        onFilterChange(column.field.field, defaultFilterFor(column.field));
-
-    const periodText = period
-        ? periodLabel(period.filter, {
-              format: period.setting.filterProps?.format ?? 'YYYY-MM-DD',
-              timezone: period.setting.filterProps?.timezone ?? 'UTC',
-              locale: i18n.language,
-              compact: narrow,
-              operatorLabel: (op) => t(`table:table.${op}`, op),
-              emptyLabel: period.title,
-          })
-        : '';
-
-    const addColumns = useMemo(
-        (): Array<AddFilterColumn> =>
-            rest.map((c) => ({
-                field: c.field,
-                title: c.title,
-                active: c.active,
-            })),
-        [rest],
-    );
-
-    const chips = (
-        <>
-            {activeRest.map((c) => (
-                <FilterChipItem
-                    key={c.field.field}
-                    field={c.field}
-                    setting={c.setting}
-                    filter={c.filter}
-                    title={c.title}
-                    disabled={disabled}
-                    onOpen={(anchor) => openEditor(c, anchor)}
-                    onDelete={() => removeFilter(c)}
-                />
-            ))}
-            {addColumns.length > 0 && (
-                <ButtonBase
-                    title={t('table:table.add_filter', 'Add a filter')}
-                    aria-label={t('table:table.add_filter', 'Add a filter')}
-                    disabled={disabled}
-                    onClick={(e) =>
-                        setAddAnchor(e.currentTarget as HTMLElement)
-                    }
-                    sx={{
-                        width: 26,
-                        height: 26,
-                        flexShrink: 0,
-                        border: '1px dashed',
-                        borderColor: 'primary.main',
-                        borderRadius: 1,
-                        bgcolor: 'primary.lighter',
-                        color: 'primary.main',
-                    }}>
-                    <AddIcon sx={{ fontSize: 16 }} />
-                </ButtonBase>
-            )}
-        </>
-    );
+    const active = columns.filter((c) => c.active);
+    if (active.length === 0) return null;
 
     return (
         <Box
@@ -194,193 +43,63 @@ export const TableFilterPanel: React.FC<Props> = ({
                 flexWrap: 'wrap',
                 px: 2,
                 pb: 1.5,
-                pt: 0.5,
+                pt: 1,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
                 bgcolor: 'background.paper',
             }}>
-            {period && (
-                <Button
-                    variant='outlined'
-                    color='inherit'
+            {active.map((c) => (
+                <FilterChipItem
+                    key={c.field.field}
+                    column={c}
                     disabled={disabled}
-                    onClick={(e) => openEditor(period, e.currentTarget)}
-                    startIcon={
-                        time ? (
-                            <ScheduleIcon
-                                sx={{
-                                    fontSize: 18,
-                                    color: period.active
-                                        ? 'primary.main'
-                                        : 'text.secondary',
-                                }}
-                            />
-                        ) : (
-                            <EventIcon
-                                sx={{
-                                    fontSize: 18,
-                                    color: period.active
-                                        ? 'primary.main'
-                                        : 'text.secondary',
-                                }}
-                            />
-                        )
-                    }
-                    endIcon={
-                        edited === period ? (
-                            <ExpandLessIcon
-                                sx={{ fontSize: 18, color: 'text.secondary' }}
-                            />
-                        ) : (
-                            <ExpandMoreIcon
-                                sx={{ fontSize: 18, color: 'text.secondary' }}
-                            />
-                        )
-                    }
-                    sx={{
-                        height: CONTROL_HEIGHT,
-                        px: 1.5,
-                        borderColor:
-                            edited === period
-                                ? 'primary.main'
-                                : 'grey.300',
-                        color: 'text.primary',
-                        fontWeight: 400,
-                        textTransform: 'none',
-                        whiteSpace: 'nowrap',
-                        '&:hover': { borderColor: 'primary.light' },
-                    }}>
-                    {periodText}
-                </Button>
-            )}
+                    compact={narrow}
+                    onOpen={(anchor) => onOpen(c, anchor)}
+                    onDelete={() => onRemove(c)}
+                />
+            ))}
 
-            {period && (activeRest.length > 0 || addColumns.length > 0) && (
-                <Separator />
-            )}
-
-            {narrow ? (
-                addColumns.length > 0 && (
-                    <Button
-                        variant='outlined'
-                        color='inherit'
-                        disabled={disabled}
-                        aria-label={t('table:table.filters', 'Filters')}
-                        onClick={(e) => setListAnchor(e.currentTarget)}
-                        sx={{
-                            height: CONTROL_HEIGHT,
-                            minWidth: 0,
-                            px: 1.5,
-                            borderColor: 'grey.300',
-                            color: 'text.primary',
-                        }}>
-                        <Badge
-                            badgeContent={activeRest.length}
-                            color='primary'
-                            overlap='rectangular'>
-                            <FilterListIcon
-                                sx={{ fontSize: 18, color: 'text.secondary' }}
-                            />
-                        </Badge>
-                    </Button>
-                )
-            ) : (
-                chips
-            )}
-
-            {activeCount > 0 && (
-                <>
-                    {/* the reset follows the chips instead of being pushed to
-                        the far edge — on a wide table `ml: 'auto'` put it half
-                        a screen away from the thing it resets, and once the row
-                        wrapped it was left alone on a second line */}
-                    <Separator />
-                    <Button
-                        size='small'
-                        color='inherit'
-                        disabled={disabled}
-                        onClick={onResetAll}
-                        startIcon={<ClearIcon sx={{ fontSize: 16 }} />}
-                        sx={{
-                            height: 26,
-                            px: 1,
-                            flexShrink: 0,
-                            fontSize: '0.75rem',
-                            fontWeight: 400,
-                            textTransform: 'none',
-                            whiteSpace: 'nowrap',
-                            color: 'text.secondary',
-                            '& .MuiButton-startIcon': { mr: 0.5 },
-                            /* it throws work away, so it reads as destructive
-                               the moment the pointer is on it */
-                            '&:hover': {
-                                color: 'error.main',
-                                bgcolor: 'error.lighter',
-                            },
-                        }}>
-                        {t('table:table.reset_count', {
-                            n: activeCount,
-                            defaultValue: 'Reset ({{n}})',
-                        })}
-                    </Button>
-                </>
-            )}
-
-            <Popover
-                open={Boolean(listAnchor)}
-                anchorEl={listAnchor}
-                onClose={() => setListAnchor(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                slotProps={{ paper: { sx: { mt: 0.5, p: 1.5 } } }}>
-                <Box
-                    sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        gap: 1,
-                        maxWidth: 280,
-                    }}>
-                    <Typography
-                        sx={{
-                            fontSize: '0.6875rem',
-                            fontWeight: 600,
-                            letterSpacing: '.04em',
-                            textTransform: 'uppercase',
-                            color: 'text.secondary',
-                        }}>
-                        {t('table:table.filters', 'Filters')}
-                    </Typography>
-                    {chips}
-                </Box>
-            </Popover>
-
-            <AddFilterMenu
-                anchorEl={addAnchor}
-                columns={addColumns}
-                onClose={() => setAddAnchor(null)}
-                onPick={(field) => {
-                    const column = rest.find((c) => c.field === field);
-                    const anchor = addAnchor;
-                    setAddAnchor(null);
-                    if (column && anchor) openEditor(column, anchor);
+            {/* the reset follows the chips instead of being pushed to the far
+                edge — on a wide table `ml: 'auto'` put it half a screen away
+                from the thing it resets, and once the row wrapped it was left
+                alone on a second line */}
+            <Box
+                sx={{
+                    width: '1px',
+                    height: 20,
+                    flexShrink: 0,
+                    bgcolor: 'divider',
+                    display: { xs: 'none', sm: 'block' },
                 }}
             />
-
-            {editing && edited && (
-                <FilterPopover
-                    anchorEl={editing.anchor}
-                    field={edited.field}
-                    setting={edited.setting}
-                    filter={edited.filter}
-                    title={edited.title}
-                    time={time}
-                    onTimeChange={onTimeChange}
-                    onApply={(change) =>
-                        onFilterChange(edited.field.field, change)
-                    }
-                    onClose={() => setEditing(null)}
-                />
-            )}
+            <Button
+                size='small'
+                color='inherit'
+                disabled={disabled}
+                onClick={onResetAll}
+                startIcon={<ClearIcon sx={{ fontSize: 16 }} />}
+                sx={{
+                    height: 26,
+                    px: 1,
+                    flexShrink: 0,
+                    fontSize: '0.75rem',
+                    fontWeight: 400,
+                    textTransform: 'none',
+                    whiteSpace: 'nowrap',
+                    color: 'text.secondary',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
+                    /* it throws work away, so it reads as destructive the
+                       moment the pointer is on it */
+                    '&:hover': {
+                        color: 'error.main',
+                        bgcolor: 'error.lighter',
+                    },
+                }}>
+                {t('table:table.reset_count', {
+                    n: active.length,
+                    defaultValue: 'Reset ({{n}})',
+                })}
+            </Button>
         </Box>
     );
 };

@@ -8,6 +8,9 @@
 src/components/
 ├── common-table/         — Таблица v2 с фильтрами и пагинацией
 │   ├── filters/          — BoolFilterV2, DateFilterV2, NumberFilterV2, SelectFilterV2, StringFilterV2, OperatorMenu
+│   ├── panel/            — UI фильтров: иконка в шапке колонки (ColumnFilterButton),
+│   │                       редактор в поповере (FilterPopover → ValueEditor / PeriodEditor),
+│   │                       сводка активных фильтров чипсами (TableFilterPanel)
 │   └── types/            — filter.types.ts, table-v2.types.tsx, table-v2.fields.ts
 ├── help/                 — Редактор и вьювер справочных статей
 └── rule-set/             — Визуальный редактор правил (BooleanLogicRuleSet / UserLogicRuleSet)
@@ -16,7 +19,11 @@ src/hooks/                — useDragAndDrop
 ```
 
 ## Component Quick Reference
-- **CommonTableV2** — основная таблица. Поддерживает сортировку, фильтрацию (все фильтры из common-table/filters), пагинацию. Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
+- **CommonTableV2** — основная таблица. Поддерживает сортировку, фильтрацию (все фильтры из common-table/filters), пагинацию.
+  Фильтр колонки открывается иконкой в её же шапке; над таблицей остаётся только сводка активных фильтров с кнопкой сброса,
+  и она скрыта целиком, пока ни один фильтр не выставлен. Отключается пропсами `showColumnFilters` / `showFilterPanel`.
+  Колонка с чекбоксом фиксирована (44px): запас ширины забирает служебная колонка-филлер в конце строки.
+  Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
 - **CommonTablePaginator** — нижняя панель нумерации страниц MUI.
 - **HelpEditor** – WYSIWYG-редактор на contentEditable. Инструменты: bold, italic, underline, H1/H2/p/ul/ol/code и вставка ссылок (внутренних `help:<slug>` или внешних URL) и изображений. Многоязычность через locale switches.
 - **HelpContext / HelpDialog / HelpAnchor** – контекст для хранения статей справки и отображение их в модальном окне, якорные ссылки из HelpEditor. В режиме редактирования `HelpDialog` показывает кнопки «Экспорт» / «Импорт», если переданы `onExport` / `onImport`; формат файла определяет потребитель, библиотека лишь отдаёт выбранный `File` (см. README).

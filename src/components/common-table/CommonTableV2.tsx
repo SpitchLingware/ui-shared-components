@@ -69,7 +69,10 @@ type Props = {
 type ColumnWidths = Record<string, number>;
 
 const DEFAULT_COL_WIDTH = 160;
-const CHECKBOX_COL_WIDTH = 48;
+/* the MUI checkbox is 38px across on its own — `SwitchBase` pads 9px around a
+   20px icon — so 44 left it 3px of air a side and 48 barely more. 56 gives the
+   box the room the column used to have back when it still stretched. */
+const CHECKBOX_COL_WIDTH = 56;
 const MIN_COL_WIDTH = 60;
 const HEADER_HEIGHT = 32;
 

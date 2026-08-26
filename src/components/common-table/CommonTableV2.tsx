@@ -69,7 +69,7 @@ type Props = {
 type ColumnWidths = Record<string, number>;
 
 const DEFAULT_COL_WIDTH = 160;
-const CHECKBOX_COL_WIDTH = 44;
+const CHECKBOX_COL_WIDTH = 48;
 const MIN_COL_WIDTH = 60;
 const HEADER_HEIGHT = 32;
 
@@ -181,6 +181,8 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         },
         [storageKey],
     );
+
+    const tableRef = useRef<HTMLTableElement>(null);
 
     const [widths, setWidths] = useState<ColumnWidths>(() => {
         const initial: ColumnWidths = {};
@@ -303,13 +305,32 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         };
     }, [storageKey, widths]);
 
+    /* what the columns are on screen right now: a stretched column is wider
+       than the number stored for it */
+    const renderedWidths = (): ColumnWidths | undefined => {
+        const cells = tableRef.current?.tHead?.rows?.[0]?.cells;
+        if (!cells) return undefined;
+        const next: ColumnWidths = {};
+        visibleFields.forEach((f, i) => {
+            /* cell 0 is the checkbox column */
+            const cell = cells[i + 1];
+            if (cell) next[f.field] = cell.getBoundingClientRect().width;
+        });
+        return next;
+    };
+
     const startResize = (field: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        /* freeze the stretch before the drag: the shares below are recomputed
+           from `widths`, so a drag that started from the stored number would
+           snap the column to it first */
+        const rendered = renderedWidths();
+        if (rendered) setWidths(rendered);
         resizingRef.current = {
             field,
             startX: e.clientX,
-            startWidth: widths[field] ?? DEFAULT_COL_WIDTH,
+            startWidth: (rendered ?? widths)[field] ?? DEFAULT_COL_WIDTH,
         };
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
@@ -330,12 +351,25 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         );
     };
 
-    const totalColWidth =
-        CHECKBOX_COL_WIDTH +
-        visibleFields.reduce(
-            (s, f) => s + (widths[f.field] ?? DEFAULT_COL_WIDTH),
-            0,
-        );
+    const widthSum = visibleFields.reduce(
+        (s, f) => s + (widths[f.field] ?? DEFAULT_COL_WIDTH),
+        0,
+    );
+    const totalColWidth = CHECKBOX_COL_WIDTH + widthSum;
+
+    /* A data column is sized as its share of the columns, not as a number of
+       pixels: the shares add up to 100%, and `table-layout: fixed` resolves a
+       percentage against what the px-wide checkbox column leaves behind. So a
+       table narrower than its container stretches its data columns
+       proportionally — as it did before — while the checkbox column stays at
+       CHECKBOX_COL_WIDTH whatever the window does. Written in pixels instead,
+       the slack was spread over every column, the checkbox one included.
+    */
+    const columnShare = (field: string): string => {
+        const width = widths[field] ?? DEFAULT_COL_WIDTH;
+        if (widthSum <= 0) return `${width}px`;
+        return `${((width / widthSum) * 100).toFixed(4)}%`;
+    };
 
     const headerCellSx = {
         bgcolor: grey[50],
@@ -352,15 +386,6 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                 backgroundColor: '#3a3a3a',
             },
         }),
-    };
-
-    /* the filler swallows whatever the container is wider by, so the space is
-       not spread over the real columns — that is what keeps the checkbox one
-       at exactly CHECKBOX_COL_WIDTH */
-    const fillerCellSx = {
-        padding: 0,
-        borderRight: 0,
-        borderColor: 'divider',
     };
 
     return (
@@ -403,12 +428,13 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                     pointerEvents: loading ? 'none' : 'auto',
                 }}>
                 <Table
+                    ref={tableRef}
                     size='small'
                     stickyHeader
                     sx={{
                         tableLayout: 'fixed',
-                        width: totalColWidth,
-                        minWidth: '100%',
+                        width: '100%',
+                        minWidth: totalColWidth,
                         borderCollapse: 'separate',
                         borderSpacing: 0,
                     }}>
@@ -417,14 +443,9 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                         {visibleFields.map((f) => (
                             <col
                                 key={f.field}
-                                style={{
-                                    width: widths[f.field] ?? DEFAULT_COL_WIDTH,
-                                }}
+                                style={{ width: columnShare(f.field) }}
                             />
                         ))}
-                        {/* the one column without a width: with
-                            `table-layout: fixed` the slack lands here */}
-                        <col />
                     </colgroup>
                     <TableHead>
                         {/* row 1: title + sort + filter */}
@@ -534,16 +555,13 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                     </TableCell>
                                 );
                             })}
-                            <TableCell
-                                sx={{ ...headerCellSx, ...fillerCellSx }}
-                            />
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {rows.length === 0 && !loading && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={visibleFields.length + 2}
+                                    colSpan={visibleFields.length + 1}
                                     sx={{
                                         textAlign: 'center',
                                         py: 4,
@@ -593,9 +611,9 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                     }
                                     sx={{ cursor: 'pointer' }}>
                                     <TableCell
-                                        padding='checkbox'
                                         sx={{
                                             width: CHECKBOX_COL_WIDTH,
+                                            padding: 0,
                                             textAlign: 'center',
                                         }}>
                                         <Checkbox
@@ -630,7 +648,6 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                             </TableCell>
                                         );
                                     })}
-                                    <TableCell sx={fillerCellSx} />
                                 </TableRow>
                             );
                         })}

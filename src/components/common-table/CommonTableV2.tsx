@@ -374,6 +374,17 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         return `${((width / widthSum) * 100).toFixed(4)}%`;
     };
 
+    /* The column is ours to size, so its padding is ours too. An application
+       theme that pads the first cell of every row — 24px in the Mantis family
+       — would spend that on the left of the box and lean it against the right
+       edge of the cell; `&&&` outranks a `:first-of-type` rule whatever order
+       the style sheets are injected in. */
+    const checkboxCellSx = {
+        width: CHECKBOX_COL_WIDTH,
+        textAlign: 'center' as const,
+        '&&&': { padding: 0 },
+    };
+
     const headerCellSx = {
         bgcolor: grey[50],
         position: 'sticky' as const,
@@ -457,10 +468,8 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                 rowSpan={1}
                                 sx={{
                                     ...headerCellSx,
+                                    ...checkboxCellSx,
                                     height: HEADER_HEIGHT,
-                                    width: CHECKBOX_COL_WIDTH,
-                                    padding: 0,
-                                    textAlign: 'center',
                                 }}
                             />
                             {visibleFields.map((field, idx) => {
@@ -613,12 +622,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                         handleRowDoubleClick(id)
                                     }
                                     sx={{ cursor: 'pointer' }}>
-                                    <TableCell
-                                        sx={{
-                                            width: CHECKBOX_COL_WIDTH,
-                                            padding: 0,
-                                            textAlign: 'center',
-                                        }}>
+                                    <TableCell sx={checkboxCellSx}>
                                         <Checkbox
                                             size='small'
                                             checked={isSelected}

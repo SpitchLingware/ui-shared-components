@@ -1,5 +1,6 @@
 import { Popover } from '@mui/material';
 import React from 'react';
+import { defaultFilterFor } from '../common-table.utils';
 import {
     CommonTableV2ColumnSettings,
     CommonTableV2FilterValue,
@@ -32,34 +33,48 @@ export const FilterPopover: React.FC<Props> = ({
     onTimeChange,
     onApply,
     onClose,
-}) => (
-    <Popover
-        open={Boolean(anchorEl)}
-        anchorEl={anchorEl}
-        onClose={onClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        slotProps={{ paper: { sx: { mt: 0.5, maxWidth: '100vw' } } }}>
-        {isDateField(field) ? (
-            <PeriodEditor
-                filter={filter}
-                format={setting.filterProps?.format ?? 'YYYY-MM-DD'}
-                timezone={setting.filterProps?.timezone ?? 'UTC'}
-                timeAvailable={Boolean(setting.filterProps?.withTime)}
-                time={time}
-                onTimeChange={onTimeChange}
-                onApply={onApply}
-                onClose={onClose}
-            />
-        ) : (
-            <ValueEditor
-                field={field}
-                setting={setting}
-                filter={filter}
-                title={title}
-                onApply={onApply}
-                onClose={onClose}
-            />
-        )}
-    </Popover>
-);
+}) => {
+    /* what «Сбросить» puts the column back to — the same untouched entry the
+       chip's ✕ and «Сбросить всё» write, so the word means one thing
+       wherever the user reads it */
+    const untouched = defaultFilterFor(field);
+    const reset: FilterChange = {
+        value: untouched.value,
+        operator: untouched.operator,
+    };
+
+    return (
+        <Popover
+            open={Boolean(anchorEl)}
+            anchorEl={anchorEl}
+            onClose={onClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            slotProps={{ paper: { sx: { mt: 0.5, maxWidth: '100vw' } } }}>
+            {isDateField(field) ? (
+                <PeriodEditor
+                    filter={filter}
+                    title={title}
+                    reset={reset}
+                    format={setting.filterProps?.format ?? 'YYYY-MM-DD'}
+                    timezone={setting.filterProps?.timezone ?? 'UTC'}
+                    timeAvailable={Boolean(setting.filterProps?.withTime)}
+                    time={time}
+                    onTimeChange={onTimeChange}
+                    onApply={onApply}
+                    onClose={onClose}
+                />
+            ) : (
+                <ValueEditor
+                    field={field}
+                    setting={setting}
+                    filter={filter}
+                    title={title}
+                    reset={reset}
+                    onApply={onApply}
+                    onClose={onClose}
+                />
+            )}
+        </Popover>
+    );
+};

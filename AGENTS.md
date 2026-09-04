@@ -11,6 +11,7 @@ src/components/
 │   ├── panel/            — UI фильтров: иконка в шапке колонки (ColumnFilterButton),
 │   │                       редактор в поповере (FilterPopover → ValueEditor / PeriodEditor),
 │   │                       выбор операции внутри поповера (OperatorSelect),
+│   │                       шапка поповера с названием колонки и сбросом (EditorHeader),
 │   │                       сводка активных фильтров чипсами (TableFilterPanel)
 │   └── types/            — filter.types.ts, table-v2.types.tsx, table-v2.fields.ts
 ├── help/                 — Редактор и вьювер справочных статей
@@ -27,6 +28,8 @@ src/hooks/                — useDragAndDrop
   Набор операций даёт `operatorsForField` по типу колонки, переопределяется через `filterProps.operators`.
   Чип в сводке всегда называет операцию — `describeFilterParts` / `periodParts` отдают её отдельно от значения,
   чтобы чип развёл их по тону.
+  Сброс фильтра — крестик в шапке поповера; цель сброса (`defaultFilterFor`) считает `FilterPopover` и передаёт
+  оба редактора пропом `reset`, так что «Сбросить» на чипе, в панели и в поповере значат одно и то же.
   Колонка с чекбоксом фиксирована (44px): запас ширины забирает служебная колонка-филлер в конце строки.
   Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
 - **CommonTablePaginator** — нижняя панель нумерации страниц MUI.

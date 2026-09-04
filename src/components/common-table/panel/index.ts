@@ -1,6 +1,7 @@
 export * from './column-summary';
 export * from './ColumnFilterButton';
 export * from './EditorFooter';
+export * from './EditorHeader';
 export * from './filter-value.utils';
 export * from './FilterChipItem';
 export * from './FilterPopover';

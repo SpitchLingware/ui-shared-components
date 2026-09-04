@@ -16,8 +16,9 @@ import {
 } from '../types';
 import { labelSx, overlineSx } from './editor.styles';
 import { EditorFooter } from './EditorFooter';
+import { EditorHeader } from './EditorHeader';
 import {
-    emptyValueFor,
+    isFilterActive,
     isRangeValue,
     valueForOperator,
 } from './filter-value.utils';
@@ -30,6 +31,10 @@ import {
 
 type Props = {
     filter: CommonTableV2FilterValue;
+    /** the column's name, at the head of the editing pane */
+    title: string;
+    /** what «Сбросить» puts the column back to */
+    reset: FilterChange;
     format: string;
     timezone: string;
     /** whether the table offers a time-precise bound at all */
@@ -55,6 +60,8 @@ const toRange = (raw: any) =>
 
 export const PeriodEditor: React.FC<Props> = ({
     filter,
+    title,
+    reset,
     format,
     timezone,
     timeAvailable,
@@ -185,6 +192,15 @@ export const PeriodEditor: React.FC<Props> = ({
                     flexDirection: 'column',
                     gap: 1.75,
                 }}>
+                <EditorHeader
+                    title={title}
+                    resetDisabled={
+                        !isFilterActive(draft) &&
+                        draft.operator === reset.operator
+                    }
+                    onReset={() => setDraft({ ...draft, ...reset })}
+                />
+
                 <OperatorSelect
                     operator={draft.operator}
                     operators={DATE_OPERATORS}
@@ -262,13 +278,8 @@ export const PeriodEditor: React.FC<Props> = ({
                 )}
 
                 <EditorFooter
-                    secondaryLabel={t('table:table.reset', 'Reset')}
-                    onSecondary={() =>
-                        setDraft({
-                            ...draft,
-                            value: emptyValueFor(draft.value),
-                        })
-                    }
+                    secondaryLabel={t('table:table.cancel', 'Cancel')}
+                    onSecondary={onClose}
                     onApply={() => {
                         onApply({
                             value: draft.value,

@@ -7,10 +7,12 @@ import {
     FilterChange,
     TableField,
 } from '../types';
-import { overlineSx, titleSx } from './editor.styles';
+import { overlineSx } from './editor.styles';
 import { EditorFooter } from './EditorFooter';
+import { EditorHeader } from './EditorHeader';
 import {
     emptyValueFor,
+    isFilterActive,
     isOptionField,
     operatorsForField,
     valueForOperator,
@@ -24,6 +26,8 @@ type Props = {
     setting: CommonTableV2ColumnSettings;
     filter: CommonTableV2FilterValue;
     title: string;
+    /** what «Сбросить» puts the column back to */
+    reset: FilterChange;
     onApply: (change: FilterChange) => void;
     onClose: () => void;
 };
@@ -39,6 +43,7 @@ export const ValueEditor: React.FC<Props> = ({
     setting,
     filter,
     title,
+    reset,
     onApply,
     onClose,
 }) => {
@@ -67,15 +72,14 @@ export const ValueEditor: React.FC<Props> = ({
             {/* the column's name heads the popover; the two sections under
                 it — the condition and the value — are the ones that share the
                 overline, so the three do not read as one list */}
-            <Typography
-                sx={{
-                    ...titleSx,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                }}>
-                {title}
-            </Typography>
+            <EditorHeader
+                title={title}
+                resetDisabled={
+                    !isFilterActive({ ...filter, ...draft }) &&
+                    draft.operator === reset.operator
+                }
+                onReset={() => setDraft(reset)}
+            />
 
             {operators.length > 0 && (
                 <OperatorSelect

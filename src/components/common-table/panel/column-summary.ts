@@ -1,12 +1,14 @@
 import {
-    describeFilterValue,
+    describeFilterParts,
     DescribeOptions,
+    FilterSummaryParts,
     isDateField,
     isFilterActive,
     isOptionField,
+    joinSummary,
     VALUELESS_OPERATORS,
 } from './filter-value.utils';
-import { periodLabel } from './period.utils';
+import { periodParts } from './period.utils';
 import { FilterColumn } from './useFilterColumns';
 
 export type ColumnSummaryOptions = DescribeOptions & {
@@ -20,22 +22,25 @@ export type ColumnSummaryOptions = DescribeOptions & {
     compact?: boolean;
 };
 
-/** What a column's filter currently says, in one line.
+const NOTHING: FilterSummaryParts = { operator: '', value: '' };
+
+/** What a column's filter currently says, as the operator and the value it
+ *  was given.
  *
  *  The chip above the table and the tooltip of the header button ask the same
  *  question, and a date has to answer it as a period («Сегодня») rather than
  *  as the two bounds stored in the filter.
  */
-export const columnSummary = (
+export const columnSummaryParts = (
     column: FilterColumn,
     options: ColumnSummaryOptions,
-): string => {
+): FilterSummaryParts => {
     const { field, setting, filter } = column;
 
-    if (!isFilterActive(filter)) return '';
+    if (!isFilterActive(filter)) return NOTHING;
 
     if (isDateField(field)) {
-        return periodLabel(filter, {
+        return periodParts(filter, {
             format: setting.filterProps?.format ?? 'YYYY-MM-DD',
             timezone: setting.filterProps?.timezone ?? 'UTC',
             locale: options.locale,
@@ -54,8 +59,17 @@ export const columnSummary = (
         const values = Array.isArray(filter.value)
             ? filter.value
             : [filter.value];
-        return options.countLabel(values.length);
+        return {
+            operator: options.operatorLabel(filter.operator),
+            value: options.countLabel(values.length),
+        };
     }
 
-    return describeFilterValue(filter, options);
+    return describeFilterParts(filter, options);
 };
+
+/** The same summary in one line, for a tooltip or an aria label. */
+export const columnSummary = (
+    column: FilterColumn,
+    options: ColumnSummaryOptions,
+): string => joinSummary(columnSummaryParts(column, options));

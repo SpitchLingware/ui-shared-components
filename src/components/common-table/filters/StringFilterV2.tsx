@@ -10,6 +10,7 @@ export const StringFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
     immediate,
+    hideOperator,
     onChange,
 }) => {
     const [local, setLocal] = useState<string>(
@@ -48,18 +49,20 @@ export const StringFilterV2: React.FC<FilterEditorProps> = ({
                     '& .MuiInputBase-root': { fontSize: '0.8rem' },
                 }}
             />
-            <OperatorMenu
-                operator={filter.operator}
-                operators={STRING_OPERATORS}
-                disabled={disabled}
-                onChange={(operator) => {
-                    pushChange.cancel();
-                    onChange({
-                        value: VALUELESS.has(operator) ? '' : local,
-                        operator,
-                    });
-                }}
-            />
+            {!hideOperator && (
+                <OperatorMenu
+                    operator={filter.operator}
+                    operators={STRING_OPERATORS}
+                    disabled={disabled}
+                    onChange={(operator) => {
+                        pushChange.cancel();
+                        onChange({
+                            value: VALUELESS.has(operator) ? '' : local,
+                            operator,
+                        });
+                    }}
+                />
+            )}
         </Box>
     );
 };

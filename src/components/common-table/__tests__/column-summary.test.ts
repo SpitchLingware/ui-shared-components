@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { columnSummary } from '../panel/column-summary';
+import { columnSummary, columnSummaryParts } from '../panel/column-summary';
 import { FilterColumn } from '../panel/useFilterColumns';
 import { isFilterActive } from '../panel/filter-value.utils';
 import {
@@ -52,7 +52,7 @@ describe('what a column says its filter is set to', () => {
         );
         /* the bounds are spelled out as days, and the year is said once */
         expect(columnSummary(c, { operatorLabel, locale: 'en' })).toBe(
-            '1 Aug — 14 Aug 2026',
+            'op:inrange 1 Aug — 14 Aug 2026',
         );
     });
 
@@ -64,7 +64,7 @@ describe('what a column says its filter is set to', () => {
         );
         expect(
             columnSummary(c, { operatorLabel, locale: 'en', compact: true }),
-        ).toBe('01.08 — 14.08');
+        ).toBe('op:inrange 01.08 — 14.08');
     });
 
     it('picked options are counted where their labels cannot be read', () => {
@@ -74,7 +74,7 @@ describe('what a column says its filter is set to', () => {
             'inlist',
         );
         expect(columnSummary(c, { operatorLabel, countLabel })).toBe(
-            '3 выбрано',
+            'op:inlist 3 выбрано',
         );
     });
 
@@ -90,7 +90,7 @@ describe('what a column says its filter is set to', () => {
                 countLabel,
                 optionLabel: (id) => id.toUpperCase(),
             }),
-        ).toBe('A, B');
+        ).toBe('op:inlist A, B');
     });
 
     it('an operator that needs no value is named even so', () => {
@@ -104,15 +104,28 @@ describe('what a column says its filter is set to', () => {
         );
     });
 
-    it('a plain value carries its operator unless the operator is obvious', () => {
-        const contains = column(
-            { field: 'name', type: 'text' },
-            'ivan',
-            'contains',
-        );
-        expect(columnSummary(contains, { operatorLabel })).toBe('ivan');
+    it('a plain value always carries its operator', () => {
+        /* the three of them read the same without it, and the chip is the one
+           place the user is told which question the table is answering */
+        ['contains', 'startsWith', 'eq'].forEach((op) => {
+            const c = column({ field: 'name', type: 'text' }, 'ivan', op);
+            expect(columnSummary(c, { operatorLabel })).toBe(`op:${op} ivan`);
+        });
+    });
 
-        const ends = column({ field: 'name', type: 'text' }, 'ivan', 'endsWith');
-        expect(columnSummary(ends, { operatorLabel })).toBe('op:endsWith ivan');
+    it('hands the two halves over apart, for a chip to tone them', () => {
+        const c = column({ field: 'name', type: 'text' }, 'ivan', 'startsWith');
+        expect(columnSummaryParts(c, { operatorLabel })).toEqual({
+            operator: 'op:startsWith',
+            value: 'ivan',
+        });
+    });
+
+    it('an untouched column has neither half', () => {
+        const c = column({ field: 'name', type: 'text' }, '', 'contains');
+        expect(columnSummaryParts(c, { operatorLabel })).toEqual({
+            operator: '',
+            value: '',
+        });
     });
 });

@@ -96,6 +96,7 @@ const PickerWithTooltip: React.FC<PickerWithTooltipProps> = ({
 export const DateFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
+    hideOperator,
     onChange,
     filterProps,
 }) => {
@@ -188,21 +189,23 @@ export const DateFilterV2: React.FC<FilterEditorProps> = ({
                 />
             )}
             {clock}
-            <OperatorMenu
-                operator={filter.operator}
-                operators={DATE_OPERATORS}
-                disabled={disabled}
-                onChange={(operator) => {
-                    const becomingRange = RANGE_OPERATORS.has(operator);
-                    if (becomingRange && !isRange) {
-                        emit({ start: '', end: '' }, operator);
-                    } else if (!becomingRange && isRange) {
-                        emit('', operator);
-                    } else {
-                        emit(filter.value, operator);
-                    }
-                }}
-            />
+            {!hideOperator && (
+                <OperatorMenu
+                    operator={filter.operator}
+                    operators={DATE_OPERATORS}
+                    disabled={disabled}
+                    onChange={(operator) => {
+                        const becomingRange = RANGE_OPERATORS.has(operator);
+                        if (becomingRange && !isRange) {
+                            emit({ start: '', end: '' }, operator);
+                        } else if (!becomingRange && isRange) {
+                            emit('', operator);
+                        } else {
+                            emit(filter.value, operator);
+                        }
+                    }}
+                />
+            )}
         </Box>
     );
 };

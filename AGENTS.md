@@ -10,6 +10,7 @@ src/components/
 │   ├── filters/          — BoolFilterV2, DateFilterV2, NumberFilterV2, SelectFilterV2, StringFilterV2, OperatorMenu
 │   ├── panel/            — UI фильтров: иконка в шапке колонки (ColumnFilterButton),
 │   │                       редактор в поповере (FilterPopover → ValueEditor / PeriodEditor),
+│   │                       выбор операции внутри поповера (OperatorSelect),
 │   │                       сводка активных фильтров чипсами (TableFilterPanel)
 │   └── types/            — filter.types.ts, table-v2.types.tsx, table-v2.fields.ts
 ├── help/                 — Редактор и вьювер справочных статей
@@ -22,6 +23,10 @@ src/hooks/                — useDragAndDrop
 - **CommonTableV2** — основная таблица. Поддерживает сортировку, фильтрацию (все фильтры из common-table/filters), пагинацию.
   Фильтр колонки открывается иконкой в её же шапке; над таблицей остаётся только сводка активных фильтров с кнопкой сброса,
   и она скрыта целиком, пока ни один фильтр не выставлен. Отключается пропсами `showColumnFilters` / `showFilterPanel`.
+  Операция выбирается в самом поповере (`OperatorSelect`, блок «Условие»): все варианты на виду, выбранный подсвечен.
+  Набор операций даёт `operatorsForField` по типу колонки, переопределяется через `filterProps.operators`.
+  Чип в сводке всегда называет операцию — `describeFilterParts` / `periodParts` отдают её отдельно от значения,
+  чтобы чип развёл их по тону.
   Колонка с чекбоксом фиксирована (44px): запас ширины забирает служебная колонка-филлер в конце строки.
   Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
 - **CommonTablePaginator** — нижняя панель нумерации страниц MUI.

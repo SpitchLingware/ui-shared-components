@@ -5,7 +5,12 @@ import {
     parseBound,
     withTimeFormat,
 } from '../filters/date-filter.utils';
-import { isRangeValue, VALUELESS_OPERATORS } from './filter-value.utils';
+import {
+    FilterSummaryParts,
+    isRangeValue,
+    joinSummary,
+    VALUELESS_OPERATORS,
+} from './filter-value.utils';
 
 export type QuickRangeId =
     | 'today'
@@ -119,46 +124,57 @@ const formatBound = (
     return withTime ? `${day} ${shaped.format('HH:mm')}` : day;
 };
 
-/** What the period button says. */
-export const periodLabel = (
+/** What a period says, operator apart from value.
+ *
+ *  A window is named as well as spelled out: «1 авг — 14 авг» carries the two
+ *  days but not whether the rows inside them are the ones kept or the ones
+ *  thrown away, and one filled bound out of two reads as a single day.
+ */
+export const periodParts = (
     filter: CommonTableV2FilterValue | undefined,
     options: PeriodLabelOptions,
-): string => {
+): FilterSummaryParts => {
     const { format, timezone, emptyLabel, operatorLabel } = options;
-    if (!filter) return emptyLabel;
+    const empty = { operator: '', value: emptyLabel };
+    if (!filter) return empty;
+
+    const operator = operatorLabel(filter.operator);
 
     if (VALUELESS_OPERATORS.has(filter.operator)) {
-        return operatorLabel(filter.operator);
+        return { operator, value: '' };
     }
 
     if (filter.operator === 'inrange' || filter.operator === 'notinrange') {
-        if (!isRangeValue(filter.value)) return emptyLabel;
+        if (!isRangeValue(filter.value)) return empty;
         const start = readBound(filter.value.start, format, timezone);
         const end = readBound(filter.value.end, format, timezone);
-        if (!start && !end) return emptyLabel;
+        if (!start && !end) return empty;
 
         const time =
             boundHasTime(filter.value.start, format, timezone) ||
             boundHasTime(filter.value.end, format, timezone);
-        const prefix =
-            filter.operator === 'notinrange'
-                ? `${operatorLabel(filter.operator)} `
-                : '';
 
         if (start && end) {
             const sameYear = start.year() === end.year();
-            return (
-                prefix +
-                `${formatBound(start, options, !sameYear, time)} — ` +
-                formatBound(end, options, true, time)
-            );
+            return {
+                operator,
+                value:
+                    `${formatBound(start, options, !sameYear, time)} — ` +
+                    formatBound(end, options, true, time),
+            };
         }
         const single = (start ?? end) as Moment;
-        return prefix + formatBound(single, options, true, time);
+        return { operator, value: formatBound(single, options, true, time) };
     }
 
     const bound = readBound(filter.value, format, timezone);
-    if (!bound) return emptyLabel;
+    if (!bound) return empty;
     const time = boundHasTime(filter.value, format, timezone);
-    return `${operatorLabel(filter.operator)} ${formatBound(bound, options, true, time)}`;
+    return { operator, value: formatBound(bound, options, true, time) };
 };
+
+/** What the period button says. */
+export const periodLabel = (
+    filter: CommonTableV2FilterValue | undefined,
+    options: PeriodLabelOptions,
+): string => joinSummary(periodParts(filter, options));

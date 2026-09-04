@@ -1,16 +1,16 @@
-import { CommonTableV2FilterValue, TableField } from '../types';
+import {
+    BOOL_OPERATORS,
+    CommonTableV2FilterValue,
+    DATE_OPERATORS,
+    NUMBER_OPERATORS,
+    OperatorOption,
+    RANGE_OPERATORS,
+    SELECT_OPERATORS,
+    STRING_OPERATORS,
+    TableField,
+} from '../types';
 
 export const VALUELESS_OPERATORS = new Set(['empty', 'notEmpty']);
-
-/* operators whose name has to be spelled out on the chip: without it
-   «Дата: 2026-08-14» reads the same for «раньше» and «после» */
-const IMPLICIT_OPERATORS = new Set([
-    'eq',
-    'inlist',
-    'inrange',
-    'contains',
-    'startsWith',
-]);
 
 export type RangeValue = { start?: any; end?: any };
 
@@ -71,6 +71,40 @@ export const isOptionField = (field: TableField): boolean =>
     field.type === 'extra' ||
     (field.type === 'object' && Boolean(field.selectType));
 
+/** The conditions a column of this kind can be asked.
+ *
+ *  A column may name its own set through `filterProps.operators`: a filter
+ *  component a consumer wrote answers to the operators it was written for,
+ *  not to the ones its field type suggests.
+ */
+export const operatorsForField = (
+    field: TableField,
+    override?: Array<OperatorOption>,
+): Array<OperatorOption> => {
+    if (override?.length) return override;
+    if (isDateField(field)) return DATE_OPERATORS;
+    if (isOptionField(field)) return SELECT_OPERATORS;
+    if (field.type === 'number') return NUMBER_OPERATORS;
+    if (field.type === 'boolean') return BOOL_OPERATORS;
+    return STRING_OPERATORS;
+};
+
+/** The value that fits the operator the user has just picked.
+ *
+ *  A range is stored as two bounds and everything else as one, so the shape
+ *  has to follow the operator — an editor handed the other shape draws itself
+ *  blank. An operator that carries no value keeps the value it was switched
+ *  away from: the field goes out of sight rather than being emptied, and
+ *  coming back to it finds the text where it was left.
+ */
+export const valueForOperator = (value: any, operator: string): any => {
+    if (VALUELESS_OPERATORS.has(operator)) return value;
+    if (RANGE_OPERATORS.has(operator)) {
+        return isRangeValue(value) ? value : { start: '', end: '' };
+    }
+    return isRangeValue(value) ? '' : value;
+};
+
 export type DescribeOptions = {
     /** translates an operator name into the current language */
     operatorLabel: (operator: string) => string;
@@ -83,6 +117,21 @@ export type DescribeOptions = {
     moreLabel?: (count: number) => string;
 };
 
+/** A filter read back as two pieces: the question it asks and the answer it
+ *  was given.
+ *
+ *  A chip sets the two in different tones — the operator is what the filter
+ *  does, the value is what the user typed — so the summary is handed over
+ *  unjoined and the caller decides how to draw it.
+ */
+export type FilterSummaryParts = {
+    operator: string;
+    value: string;
+};
+
+export const joinSummary = ({ operator, value }: FilterSummaryParts): string =>
+    [operator, value].filter(Boolean).join(' ');
+
 const describeList = (values: any[], options: DescribeOptions): string => {
     const { optionLabel = String, maxItems = 3, moreLabel } = options;
     const shown = values.slice(0, maxItems).map((v) => optionLabel(String(v)));
@@ -92,14 +141,21 @@ const describeList = (values: any[], options: DescribeOptions): string => {
     return `${shown.join(', ')}, ${more}`;
 };
 
-export const describeFilterValue = (
+/** What a filter says, operator apart from value.
+ *
+ *  Every operator is named, without exception: «Имя: ivan» stood for
+ *  `contains`, for `startsWith` and for `eq` alike, and which of the three it
+ *  was could only be learnt by opening the editor.
+ */
+export const describeFilterParts = (
     filter: CommonTableV2FilterValue,
     options: DescribeOptions,
-): string => {
+): FilterSummaryParts => {
     const { operatorLabel, boolLabel } = options;
+    const operator = operatorLabel(filter.operator);
 
     if (VALUELESS_OPERATORS.has(filter.operator)) {
-        return operatorLabel(filter.operator);
+        return { operator, value: '' };
     }
 
     const { value } = filter;
@@ -117,7 +173,11 @@ export const describeFilterValue = (
         text = String(value ?? '');
     }
 
-    if (!text) return '';
-    if (IMPLICIT_OPERATORS.has(filter.operator)) return text;
-    return `${operatorLabel(filter.operator)} ${text}`;
+    if (!text) return { operator: '', value: '' };
+    return { operator, value: text };
 };
+
+export const describeFilterValue = (
+    filter: CommonTableV2FilterValue,
+    options: DescribeOptions,
+): string => joinSummary(describeFilterParts(filter, options));

@@ -1,8 +1,9 @@
 import { Box, Chip, ChipProps, Tooltip } from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { columnSummary } from './column-summary';
-import { isOptionField } from './filter-value.utils';
+import { OPERATOR_SYMBOLS } from '../types';
+import { columnSummaryParts } from './column-summary';
+import { isOptionField, joinSummary } from './filter-value.utils';
 import { useOptionLabel } from './useFilterOptions';
 import { FilterColumn } from './useFilterColumns';
 
@@ -29,17 +30,18 @@ export const FilterChipItem: React.FC<Props> = ({
         isOptionField(field) ? setting.filterProps?.dataSource : undefined,
     );
 
-    const summary = columnSummary(column, {
+    const parts = columnSummaryParts(column, {
         locale: i18n.language,
         compact,
         optionLabel,
-        operatorLabel: (op) => t(`table:table.${op}`, op),
+        operatorLabel: (op) =>
+            (compact && OPERATOR_SYMBOLS[op]) || t(`table:table.${op}`, op),
         boolLabel: (v) => t(`table:table.${v}`, String(v)),
         moreLabel: (count) => t('table:table.more_count', { count }),
     });
 
     return (
-        <Tooltip title={`${title}: ${summary}`} placement='top'>
+        <Tooltip title={`${title}: ${joinSummary(parts)}`} placement='top'>
             <Chip
                 size='small'
                 color='primary'
@@ -66,15 +68,34 @@ export const FilterChipItem: React.FC<Props> = ({
                         <Box component='span' sx={{ color: 'primary.400' }}>
                             {title}:
                         </Box>
-                        <Box
-                            component='span'
-                            sx={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            }}>
-                            {summary}
-                        </Box>
+                        {Boolean(parts.operator) && (
+                            /* what the filter asks is set apart from what it
+                               was answered, and it is the answer that gets the
+                               room: the operator holds its width while the
+                               value is the piece that ellipsises */
+                            <Box
+                                component='span'
+                                sx={{
+                                    flexShrink: 0,
+                                    whiteSpace: 'nowrap',
+                                    color: parts.value
+                                        ? 'primary.400'
+                                        : 'inherit',
+                                }}>
+                                {parts.operator}
+                            </Box>
+                        )}
+                        {Boolean(parts.value) && (
+                            <Box
+                                component='span'
+                                sx={{
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                {parts.value}
+                            </Box>
+                        )}
                     </Box>
                 }
             />

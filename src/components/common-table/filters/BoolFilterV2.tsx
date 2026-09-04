@@ -7,6 +7,7 @@ import { OperatorMenu } from './OperatorMenu';
 export const BoolFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
+    hideOperator,
     onChange,
 }) => {
     const { t } = useTranslation();
@@ -45,14 +46,16 @@ export const BoolFilterV2: React.FC<FilterEditorProps> = ({
                     {t('table:table.false', 'false')}
                 </MenuItem>
             </TextField>
-            <OperatorMenu
-                operator={filter.operator}
-                operators={BOOL_OPERATORS}
-                disabled={disabled}
-                onChange={(operator) =>
-                    onChange({ value: filter.value, operator })
-                }
-            />
+            {!hideOperator && (
+                <OperatorMenu
+                    operator={filter.operator}
+                    operators={BOOL_OPERATORS}
+                    disabled={disabled}
+                    onChange={(operator) =>
+                        onChange({ value: filter.value, operator })
+                    }
+                />
+            )}
         </Box>
     );
 };

@@ -11,6 +11,10 @@ export type FilterEditorProps = {
     /** report every keystroke instead of debouncing: the editor sits in a
      *  popover whose «Применить» may land before the debounce fires */
     immediate?: boolean;
+    /** leave the operator out: the popover names the condition above the
+     *  value, where it is read without a click, and the editor is left with
+     *  the one job of taking the value */
+    hideOperator?: boolean;
     onChange: (next: FilterChange) => void;
     filterProps: {
         timezone: string;
@@ -26,6 +30,21 @@ export type OperatorOption = {
 };
 
 export const RANGE_OPERATORS = new Set(['inrange', 'notinrange']);
+
+/** Operators a sign states more briefly than a word.
+ *
+ *  A chip has one line for the column, the operator and the value, and on a
+ *  narrow screen the value is the first thing to be cut short — so where the
+ *  operator has a sign everybody reads, the sign is what the chip carries.
+ */
+export const OPERATOR_SYMBOLS: Record<string, string> = {
+    eq: '=',
+    neq: '≠',
+    gt: '>',
+    gte: '≥',
+    lt: '<',
+    lte: '≤',
+};
 
 export const STRING_OPERATORS: OperatorOption[] = [
     { name: 'contains', label: 'contains' },

@@ -38,6 +38,7 @@ const LIST_MAX_HEIGHT = 500;
 export const SelectFilterV2: React.FC<Props> = ({
     filter,
     disabled,
+    hideOperator,
     onChange,
     filterProps,
 }) => {
@@ -127,14 +128,16 @@ export const SelectFilterV2: React.FC<Props> = ({
                         </MenuItem>
                     ))}
                 </TextField>
-                <OperatorMenu
-                    operator={filter.operator}
-                    operators={SELECT_OPERATORS}
-                    disabled={disabled}
-                    onChange={(operator) =>
-                        onChange({ value: filter.value, operator })
-                    }
-                />
+                {!hideOperator && (
+                    <OperatorMenu
+                        operator={filter.operator}
+                        operators={SELECT_OPERATORS}
+                        disabled={disabled}
+                        onChange={(operator) =>
+                            onChange({ value: filter.value, operator })
+                        }
+                    />
+                )}
             </Box>
         );
     }
@@ -251,14 +254,16 @@ export const SelectFilterV2: React.FC<Props> = ({
                     </MenuItem>
                 ))}
             </TextField>
-            <OperatorMenu
-                operator={filter.operator}
-                operators={SELECT_OPERATORS}
-                disabled={disabled}
-                onChange={(operator) =>
-                    onChange({ value: filter.value, operator })
-                }
-            />
+            {!hideOperator && (
+                <OperatorMenu
+                    operator={filter.operator}
+                    operators={SELECT_OPERATORS}
+                    disabled={disabled}
+                    onChange={(operator) =>
+                        onChange({ value: filter.value, operator })
+                    }
+                />
+            )}
         </Box>
     );
 };

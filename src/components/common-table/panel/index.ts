@@ -4,6 +4,7 @@ export * from './EditorFooter';
 export * from './filter-value.utils';
 export * from './FilterChipItem';
 export * from './FilterPopover';
+export * from './OperatorSelect';
 export * from './period.utils';
 export * from './PeriodEditor';
 export * from './SelectOptionList';

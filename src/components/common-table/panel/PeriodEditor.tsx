@@ -1,15 +1,7 @@
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import {
-    Box,
-    ListItemButton,
-    Menu,
-    MenuItem,
-    Switch,
-    Typography,
-} from '@mui/material';
+import { Box, ListItemButton, Switch, Typography } from '@mui/material';
 import { DatePicker, DateTimePicker } from '@mui/x-date-pickers';
 import { Moment } from 'moment-timezone';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     convertValue,
@@ -22,9 +14,19 @@ import {
     FilterChange,
     RANGE_OPERATORS,
 } from '../types';
+import { labelSx, overlineSx } from './editor.styles';
 import { EditorFooter } from './EditorFooter';
-import { emptyValueFor, isRangeValue } from './filter-value.utils';
-import { QUICK_RANGES, detectQuickRange, quickRangeBounds } from './period.utils';
+import {
+    emptyValueFor,
+    isRangeValue,
+    valueForOperator,
+} from './filter-value.utils';
+import { OperatorSelect } from './OperatorSelect';
+import {
+    QUICK_RANGES,
+    detectQuickRange,
+    quickRangeBounds,
+} from './period.utils';
 
 type Props = {
     filter: CommonTableV2FilterValue;
@@ -37,18 +39,6 @@ type Props = {
     onApply: (change: FilterChange) => void;
     onClose: () => void;
 };
-
-const SEGMENT_OPERATORS = ['inrange', 'after', 'before'];
-
-const overlineSx = {
-    fontSize: '0.6875rem',
-    fontWeight: 600,
-    letterSpacing: '.04em',
-    textTransform: 'uppercase' as const,
-    color: 'text.secondary',
-};
-
-const labelSx = { fontSize: '0.75rem', fontWeight: 500 };
 
 const PANEL_WIDTH = 168;
 /* the editor pane: two bounds side by side. With the time on a bound reads
@@ -76,40 +66,13 @@ export const PeriodEditor: React.FC<Props> = ({
     const { t } = useTranslation();
 
     const [draft, setDraft] = useState<CommonTableV2FilterValue>(filter);
-    const [moreAnchor, setMoreAnchor] = useState<HTMLElement | null>(null);
     const startRef = useRef<HTMLInputElement | null>(null);
 
     const activeFormat = time ? withTimeFormat(format) : format;
     const isRange = RANGE_OPERATORS.has(draft.operator);
     const range = toRange(draft.value);
 
-    const segments = useMemo(() => {
-        const names = SEGMENT_OPERATORS.includes(draft.operator)
-            ? SEGMENT_OPERATORS
-            : [...SEGMENT_OPERATORS, draft.operator];
-        return names
-            .map((name) => DATE_OPERATORS.find((o) => o.name === name))
-            .filter(Boolean) as typeof DATE_OPERATORS;
-    }, [draft.operator]);
-
-    const restOperators = DATE_OPERATORS.filter(
-        (o) => !segments.some((s) => s.name === o.name),
-    );
-
     const quick = detectQuickRange(draft, timezone, format, time);
-
-    const setOperator = (operator: string) => {
-        const becomingRange = RANGE_OPERATORS.has(operator);
-        if (becomingRange === isRange) {
-            setDraft({ ...draft, operator });
-            return;
-        }
-        setDraft({
-            ...draft,
-            operator,
-            value: becomingRange ? { start: '', end: '' } : '',
-        });
-    };
 
     const toMoment = (raw: any): Moment | null =>
         parseBound(raw, format, timezone);
@@ -222,94 +185,17 @@ export const PeriodEditor: React.FC<Props> = ({
                     flexDirection: 'column',
                     gap: 1.75,
                 }}>
-                <Box
-                    sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                    <Typography sx={overlineSx}>
-                        {t('table:table.condition', 'Condition')}
-                    </Typography>
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            border: '1px solid',
-                            borderColor: 'grey.300',
-                            borderRadius: 1,
-                            overflow: 'hidden',
-                            fontSize: '0.8125rem',
-                        }}>
-                        {segments.map((op, idx) => {
-                            const selected = op.name === draft.operator;
-                            return (
-                                <Box
-                                    key={op.name}
-                                    role='button'
-                                    onClick={() => setOperator(op.name)}
-                                    sx={{
-                                        flex: 1,
-                                        textAlign: 'center',
-                                        py: '7px',
-                                        px: 0.5,
-                                        cursor: 'pointer',
-                                        userSelect: 'none',
-                                        borderLeft: idx === 0 ? 0 : '1px solid',
-                                        borderColor: 'grey.300',
-                                        bgcolor: selected
-                                            ? 'primary.lighter'
-                                            : 'transparent',
-                                        color: selected
-                                            ? 'primary.main'
-                                            : 'text.primary',
-                                        fontWeight: selected ? 500 : 400,
-                                        '&:hover': {
-                                            bgcolor: selected
-                                                ? 'primary.lighter'
-                                                : 'action.hover',
-                                        },
-                                    }}>
-                                    {t(`table:table.${op.label}`, op.label)}
-                                </Box>
-                            );
-                        })}
-                        {restOperators.length > 0 && (
-                            <Box
-                                role='button'
-                                aria-label={t(
-                                    'table:table.more_conditions',
-                                    'More conditions',
-                                )}
-                                onClick={(e) =>
-                                    setMoreAnchor(e.currentTarget as HTMLElement)
-                                }
-                                sx={{
-                                    width: 34,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderLeft: '1px solid',
-                                    borderColor: 'grey.300',
-                                    color: 'text.secondary',
-                                    cursor: 'pointer',
-                                    '&:hover': { bgcolor: 'action.hover' },
-                                }}>
-                                <MoreHorizIcon sx={{ fontSize: 18 }} />
-                            </Box>
-                        )}
-                    </Box>
-                    <Menu
-                        anchorEl={moreAnchor}
-                        open={Boolean(moreAnchor)}
-                        onClose={() => setMoreAnchor(null)}>
-                        {restOperators.map((op) => (
-                            <MenuItem
-                                key={op.name}
-                                onClick={() => {
-                                    setOperator(op.name);
-                                    setMoreAnchor(null);
-                                }}>
-                                {t(`table:table.${op.label}`, op.label)}
-                            </MenuItem>
-                        ))}
-                    </Menu>
-                </Box>
+                <OperatorSelect
+                    operator={draft.operator}
+                    operators={DATE_OPERATORS}
+                    onChange={(operator) =>
+                        setDraft({
+                            ...draft,
+                            operator,
+                            value: valueForOperator(draft.value, operator),
+                        })
+                    }
+                />
 
                 {isRange ? (
                     <Box
@@ -344,12 +230,11 @@ export const PeriodEditor: React.FC<Props> = ({
                         )}
                     </Box>
                 ) : (
+                    /* the condition is stated above the field now, so the
+                       field itself only has to say what it holds */
                     renderPicker(
                         draft.value,
-                        t(
-                            `table:table.${draft.operator}`,
-                            t('table:table.from', 'From'),
-                        ),
+                        t('table:table.value', 'Value'),
                         (next) => setDraft({ ...draft, value: next }),
                         startRef,
                     )

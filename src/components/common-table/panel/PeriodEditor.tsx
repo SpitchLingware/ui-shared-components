@@ -18,7 +18,7 @@ import { labelSx, overlineSx } from './editor.styles';
 import { EditorFooter } from './EditorFooter';
 import { EditorHeader } from './EditorHeader';
 import {
-    isFilterActive,
+    isFilterUntouched,
     isRangeValue,
     valueForOperator,
 } from './filter-value.utils';
@@ -192,14 +192,7 @@ export const PeriodEditor: React.FC<Props> = ({
                     flexDirection: 'column',
                     gap: 1.75,
                 }}>
-                <EditorHeader
-                    title={title}
-                    resetDisabled={
-                        !isFilterActive(draft) &&
-                        draft.operator === reset.operator
-                    }
-                    onReset={() => setDraft({ ...draft, ...reset })}
-                />
+                <EditorHeader title={title} />
 
                 <OperatorSelect
                     operator={draft.operator}
@@ -280,6 +273,11 @@ export const PeriodEditor: React.FC<Props> = ({
                 <EditorFooter
                     secondaryLabel={t('table:table.cancel', 'Cancel')}
                     onSecondary={onClose}
+                    clearDisabled={isFilterUntouched(draft, reset)}
+                    onClear={() => {
+                        onApply(reset);
+                        onClose();
+                    }}
                     onApply={() => {
                         onApply({
                             value: draft.value,

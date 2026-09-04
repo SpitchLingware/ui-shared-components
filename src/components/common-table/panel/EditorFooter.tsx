@@ -7,6 +7,10 @@ type Props = {
     onApply: () => void;
     secondaryLabel: string;
     applyDisabled?: boolean;
+    /** «Очистить» — takes the column back to unfiltered and commits it there
+     *  and then, so it is left out of editors that have nothing to clear */
+    onClear?: () => void;
+    clearDisabled?: boolean;
 };
 
 export const EditorFooter: React.FC<Props> = ({
@@ -14,6 +18,8 @@ export const EditorFooter: React.FC<Props> = ({
     onApply,
     secondaryLabel,
     applyDisabled,
+    onClear,
+    clearDisabled,
 }) => {
     const { t } = useTranslation();
     return (
@@ -26,6 +32,26 @@ export const EditorFooter: React.FC<Props> = ({
                 borderColor: 'divider',
                 pt: 1.5,
             }}>
+            {onClear && (
+                /* apart from the pair on the right: it is the one button here
+                   that throws work away, and it does it without waiting for
+                   «Применить» */
+                <Button
+                    size='small'
+                    color='inherit'
+                    disabled={clearDisabled}
+                    onClick={onClear}
+                    sx={{
+                        mr: 'auto',
+                        color: 'text.secondary',
+                        '&:hover': {
+                            color: 'error.main',
+                            bgcolor: 'error.lighter',
+                        },
+                    }}>
+                    {t('table:table.clear', 'Clear')}
+                </Button>
+            )}
             <Button size='small' color='inherit' onClick={onSecondary}>
                 {secondaryLabel}
             </Button>

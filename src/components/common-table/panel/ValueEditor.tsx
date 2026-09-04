@@ -12,7 +12,7 @@ import { EditorFooter } from './EditorFooter';
 import { EditorHeader } from './EditorHeader';
 import {
     emptyValueFor,
-    isFilterActive,
+    isFilterUntouched,
     isOptionField,
     operatorsForField,
     valueForOperator,
@@ -69,17 +69,7 @@ export const ValueEditor: React.FC<Props> = ({
                 flexDirection: 'column',
                 gap: 1.75,
             }}>
-            {/* the column's name heads the popover; the two sections under
-                it — the condition and the value — are the ones that share the
-                overline, so the three do not read as one list */}
-            <EditorHeader
-                title={title}
-                resetDisabled={
-                    !isFilterActive({ ...filter, ...draft }) &&
-                    draft.operator === reset.operator
-                }
-                onReset={() => setDraft(reset)}
-            />
+            <EditorHeader title={title} />
 
             {operators.length > 0 && (
                 <OperatorSelect
@@ -129,6 +119,11 @@ export const ValueEditor: React.FC<Props> = ({
             <EditorFooter
                 secondaryLabel={t('table:table.cancel', 'Cancel')}
                 onSecondary={onClose}
+                clearDisabled={isFilterUntouched(draft, reset)}
+                onClear={() => {
+                    onApply(reset);
+                    onClose();
+                }}
                 onApply={() => {
                     /* the draft keeps the text a valueless operator was
                        switched away from; what leaves the popover does not */

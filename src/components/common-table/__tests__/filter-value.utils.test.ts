@@ -9,6 +9,7 @@ import {
     describeFilterValue,
     emptyValueFor,
     isFilterActive,
+    isFilterUntouched,
     operatorsForField,
     valueForOperator,
 } from '../panel/filter-value.utils';
@@ -332,5 +333,39 @@ describe('the value that fits the operator just picked', () => {
         /* the field goes out of sight rather than being emptied, so coming
            back to «содержит» finds the text where it was left */
         expect(valueForOperator('ivan', 'empty')).toBe('ivan');
+    });
+});
+
+describe('whether «Очистить» has anything left to do', () => {
+    /* what the column starts on: the operator it defaults to and no value */
+    const reset = { value: '', operator: 'startsWith' };
+
+    it('an untouched column of any shape has nothing', () => {
+        expect(
+            isFilterUntouched({ value: '', operator: 'startsWith' }, reset),
+        ).toBe(true);
+        expect(
+            isFilterUntouched({ value: [], operator: 'startsWith' }, reset),
+        ).toBe(true);
+        expect(
+            isFilterUntouched(
+                { value: { start: '', end: '' }, operator: 'startsWith' },
+                reset,
+            ),
+        ).toBe(true);
+    });
+
+    it('a value is something, and so is another operator', () => {
+        expect(
+            isFilterUntouched({ value: 'ivan', operator: 'startsWith' }, reset),
+        ).toBe(false);
+        expect(
+            isFilterUntouched({ value: '', operator: 'contains' }, reset),
+        ).toBe(false);
+        /* «пусто» filters without carrying a value, so an empty value alone
+           does not mean the column is unfiltered */
+        expect(isFilterUntouched({ value: '', operator: 'empty' }, reset)).toBe(
+            false,
+        );
     });
 });

@@ -2,6 +2,7 @@ import {
     BOOL_OPERATORS,
     CommonTableV2FilterValue,
     DATE_OPERATORS,
+    FilterChange,
     NUMBER_OPERATORS,
     OperatorOption,
     RANGE_OPERATORS,
@@ -104,6 +105,18 @@ export const valueForOperator = (value: any, operator: string): any => {
     }
     return isRangeValue(value) ? '' : value;
 };
+
+/** The draft is back to where the column starts: the operator it defaults to
+ *  and no value — so «Очистить» has nothing left to do.
+ *
+ *  `reset` carries no value of its own (an untouched entry never does), which
+ *  is why only its operator is compared.
+ */
+export const isFilterUntouched = (
+    draft: FilterChange,
+    reset: FilterChange,
+): boolean =>
+    draft.operator === reset.operator && !hasFilterValue(draft.value);
 
 export type DescribeOptions = {
     /** translates an operator name into the current language */

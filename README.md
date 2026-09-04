@@ -1,17 +1,17 @@
-# @spitchligware/ui-shared-components
+# @spitchlingware/ui-shared-components
 
 Библиотека переиспользуемых UI-компонентов для React, построенная на MUI v7.
 
 ## Быстрый старт
 
 ```bash npm
-npm install @spitchligware/ui-shared-components
+npm install @spitchlingware/ui-shared-components
 ```
 
 Компоненты импортируются из одной точки:
 
 ```tsx
-import { HelpEditor } from '@spitchligware/ui-shared-components';
+import { HelpEditor } from '@spitchlingware/ui-shared-components';
 ```
 
 > Полная документация по каждому компоненту приведена ниже. Рекомендуется также ознакомиться с [AGENTS.md](./AGENTS.md) — сжатым описанием проекта для разработчика и AI-ассистентов, которое экономит контекст при дальнейшей работе.
@@ -91,10 +91,10 @@ ComputedColumnProps = { id: string; column: IColumnProps<TData> };
 Компонуем компоненты:
 
 ```tsx
-import HelpEditor from '@spitchligware/ui-shared-components/dist/components/help/HelpEditor';
-import { HelpAnchorProps } from '@spitchligware/ui-shared-components/dist/types/HelpEditorProps';
+import HelpEditor from '@spitchlingware/ui-shared-components/dist/components/help/HelpEditor';
+import { HelpAnchorProps } from '@spitchlingware/ui-shared-components/dist/types/HelpEditorProps';
 // или из библиотеки целиком для простого использования:
-import { HelpEditor, HelpAnchor, HelpDialog, HelpTree } from '@spitchligware/ui-shared-components';
+import { HelpEditor, HelpAnchor, HelpDialog, HelpTree } from '@spitchlingware/ui-shared-components';
 ```
 
 Вместе с `HelpDialog` + `HelpContext`, `HelpButton` и `HelpTree`, это образует **справочный хелпер** для встраивания статей в приложение. Сами статьи состоят из HTML-контента, написанного через HelpEditor.
@@ -121,7 +121,7 @@ import { HelpEditor, HelpAnchor, HelpDialog, HelpTree } from '@spitchligware/ui-
   Каждый из них поддерживает `Operator` / `value`, а так же **SystemConditionRuleWrapper**, который рендерит условие и добавляет логику проверки через утилиты (validations и утилити сборки).
   
 ```tsx
-import { RuleSetEditor, RuleOrder } from '@spitchligware/ui-shared-components';
+import { RuleSetEditor, RuleOrder } from '@spitchlingware/ui-shared-components';
 // дополнительные компоненты: AsyncAutocomplete, SystemConditionRuleWrapper;
 ```
 

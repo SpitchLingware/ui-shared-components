@@ -1,4 +1,4 @@
-# TESTING PLAN — @spitchligware/ui-shared-components
+# TESTING PLAN — @spitchlingware/ui-shared-components
 
 ## Обзор подхода
 

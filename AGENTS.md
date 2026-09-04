@@ -1,4 +1,4 @@
-# Agent Quick Reference — @spitchligware/ui-shared-components
+# Agent Quick Reference — @spitchlingware/ui-shared-components
 
 ## Project Overview
 Библиотека UI-компонентов для React 19 + MUI v7 на TypeScript. Компоненты экспортируются в `dist/index.js` через tsc (ESM/TS). Зависимости-пираты: @mui/material, @mui/icons-material, @mui/x-date-pickers, react-i18next, lodash, moment, uuid.
@@ -8,6 +8,12 @@
 src/components/
 ├── common-table/         — Таблица v2 с фильтрами и пагинацией
 │   ├── filters/          — BoolFilterV2, DateFilterV2, NumberFilterV2, SelectFilterV2, StringFilterV2, OperatorMenu
+│   ├── panel/            — UI фильтров: иконка в шапке колонки (ColumnFilterButton),
+│   │                       редактор в поповере (FilterPopover → ValueEditor / PeriodEditor),
+│   │                       выбор операции внутри поповера (OperatorSelect),
+│   │                       шапка поповера с названием колонки (EditorHeader),
+│   │                       футер с «Очистить» / «Отмена» / «Применить» (EditorFooter),
+│   │                       сводка активных фильтров чипсами (TableFilterPanel)
 │   └── types/            — filter.types.ts, table-v2.types.tsx, table-v2.fields.ts
 ├── help/                 — Редактор и вьювер справочных статей
 └── rule-set/             — Визуальный редактор правил (BooleanLogicRuleSet / UserLogicRuleSet)
@@ -16,10 +22,21 @@ src/hooks/                — useDragAndDrop
 ```
 
 ## Component Quick Reference
-- **CommonTableV2** — основная таблица. Поддерживает сортировку, фильтрацию (все фильтры из common-table/filters), пагинацию. Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
+- **CommonTableV2** — основная таблица. Поддерживает сортировку, фильтрацию (все фильтры из common-table/filters), пагинацию.
+  Фильтр колонки открывается иконкой в её же шапке; над таблицей остаётся только сводка активных фильтров с кнопкой сброса,
+  и она скрыта целиком, пока ни один фильтр не выставлен. Отключается пропсами `showColumnFilters` / `showFilterPanel`.
+  Операция выбирается в самом поповере (`OperatorSelect`, блок «Условие»): все варианты на виду, выбранный подсвечен.
+  Набор операций даёт `operatorsForField` по типу колонки, переопределяется через `filterProps.operators`.
+  Чип в сводке всегда называет операцию — `describeFilterParts` / `periodParts` отдают её отдельно от значения,
+  чтобы чип развёл их по тону.
+  «Очистить» в футере поповера применяется сразу и закрывает его; цель очистки (`defaultFilterFor`) считает
+  `FilterPopover` и передаёт в оба редактора пропом `reset`, так что очистка в поповере, ✕ на чипе и
+  «Сбросить всё» в панели значат одно и то же.
+  Колонка с чекбоксом фиксирована (44px): запас ширины забирает служебная колонка-филлер в конце строки.
+  Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
 - **CommonTablePaginator** — нижняя панель нумерации страниц MUI.
 - **HelpEditor** – WYSIWYG-редактор на contentEditable. Инструменты: bold, italic, underline, H1/H2/p/ul/ol/code и вставка ссылок (внутренних `help:<slug>` или внешних URL) и изображений. Многоязычность через locale switches.
-- **HelpContext / HelpDialog / HelpAnchor** – контекст для хранения статей справки и отображение их в модальном окне, якорные ссылки из HelpEditor.
+- **HelpContext / HelpDialog / HelpAnchor** – контекст для хранения статей справки и отображение их в модальном окне, якорные ссылки из HelpEditor. В режиме редактирования `HelpDialog` показывает кнопки «Экспорт» / «Импорт», если переданы `onExport` / `onImport`; формат файла определяет потребитель, библиотека лишь отдаёт выбранный `File` (см. README).
 - **HelpTree** – дерево навигации по статьям (из `help.types`).
 - **RuleSetEditor** + helpers — визуальный редактор наборов правил. Поддерживает BooleanLogicRuleSet / UserLogicRuleSet, с проверкой валидности и утилитой сборки.
   Рядом **RuleOrder**, **SystemConditionRuleWrapper**.

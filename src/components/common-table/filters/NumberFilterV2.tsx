@@ -28,6 +28,8 @@ const parseNumber = (v: string): number | '' => {
 export const NumberFilterV2: React.FC<FilterEditorProps> = ({
     filter,
     disabled,
+    immediate,
+    hideOperator,
     onChange,
 }) => {
     const isRange = RANGE_OPERATORS.has(filter.operator);
@@ -40,13 +42,12 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
         else setScalar(toScalar(filter.value));
     }, [filter.value, isRange]);
 
-    const pushChange = useMemo(
-        () =>
-            debounce((value: any, operator: string) => {
-                onChange({ value, operator });
-            }, 400),
-        [onChange],
-    );
+    const pushChange = useMemo(() => {
+        const push = (value: any, operator: string) =>
+            onChange({ value, operator });
+        if (immediate) return Object.assign(push, { cancel: () => {} });
+        return debounce(push, 400);
+    }, [immediate, onChange]);
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -109,22 +110,27 @@ export const NumberFilterV2: React.FC<FilterEditorProps> = ({
                     }}
                 />
             )}
-            <OperatorMenu
-                operator={filter.operator}
-                operators={NUMBER_OPERATORS}
-                disabled={disabled}
-                onChange={(operator) => {
-                    pushChange.cancel();
-                    const becomingRange = RANGE_OPERATORS.has(operator);
-                    if (becomingRange && !isRange) {
-                        onChange({ value: { start: '', end: '' }, operator });
-                    } else if (!becomingRange && isRange) {
-                        onChange({ value: '', operator });
-                    } else {
-                        onChange({ value: filter.value, operator });
-                    }
-                }}
-            />
+            {!hideOperator && (
+                <OperatorMenu
+                    operator={filter.operator}
+                    operators={NUMBER_OPERATORS}
+                    disabled={disabled}
+                    onChange={(operator) => {
+                        pushChange.cancel();
+                        const becomingRange = RANGE_OPERATORS.has(operator);
+                        if (becomingRange && !isRange) {
+                            onChange({
+                                value: { start: '', end: '' },
+                                operator,
+                            });
+                        } else if (!becomingRange && isRange) {
+                            onChange({ value: '', operator });
+                        } else {
+                            onChange({ value: filter.value, operator });
+                        }
+                    }}
+                />
+            )}
         </Box>
     );
 };

@@ -1,4 +1,4 @@
-# CLAUDE.md — @spitchligware/ui-shared-components
+# CLAUDE.md — @spitchlingware/ui-shared-components
 
 ## Claude Code Specific Instructions
 

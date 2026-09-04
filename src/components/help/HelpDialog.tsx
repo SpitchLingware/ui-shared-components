@@ -2,6 +2,8 @@ import {
     Add,
     Close,
     EditOutlined,
+    FileDownloadOutlined,
+    FileUploadOutlined,
     HelpOutline,
     SaveOutlined,
     ShareOutlined,
@@ -22,6 +24,7 @@ import {
 } from '@mui/material';
 import { Theme } from '@mui/material/styles';
 import {
+    ChangeEvent,
     FC,
     PointerEvent as ReactPointerEvent,
     ReactNode,
@@ -57,6 +60,11 @@ export interface HelpDialogProps {
     onAddNode: (parentId: string | null) => void;
     onDeleteNode: (nodeId: string) => void;
     onReorder: (nodeId: string, direction: 'up' | 'down') => void;
+
+    onExport?: () => void;
+    onImport?: (file: File) => void;
+    importAccept?: string;
+    transferBusy?: boolean;
 
     renderEditor?: (props: {
         value: string;
@@ -112,6 +120,10 @@ export const HelpDialog: FC<HelpDialogProps> = ({
     onAddNode,
     onDeleteNode,
     onReorder,
+    onExport,
+    onImport,
+    importAccept = '.zip',
+    transferBusy,
     renderEditor,
     sanitize,
 }) => {
@@ -124,6 +136,13 @@ export const HelpDialog: FC<HelpDialogProps> = ({
     const [treeWidth, setTreeWidth] = useState<number>(readStoredTreeWidth);
     const layoutRef = useRef<HTMLDivElement>(null);
     const treeWidthRef = useRef(treeWidth);
+    const importInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImportPick = (event: ChangeEvent<HTMLInputElement>): void => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (file) onImport?.(file);
+    };
 
     const startTreeResize = (e: ReactPointerEvent<HTMLDivElement>) => {
         if (isMobile) return;
@@ -383,6 +402,28 @@ export const HelpDialog: FC<HelpDialogProps> = ({
                     </Button>
                 )}
 
+                {isEdit && onExport && (
+                    <Button
+                        size='small'
+                        variant='outlined'
+                        startIcon={<FileDownloadOutlined />}
+                        disabled={transferBusy}
+                        onClick={onExport}>
+                        {t('actions.export', 'Export')}
+                    </Button>
+                )}
+
+                {isEdit && onImport && (
+                    <Button
+                        size='small'
+                        variant='outlined'
+                        startIcon={<FileUploadOutlined />}
+                        disabled={transferBusy}
+                        onClick={() => importInputRef.current?.click()}>
+                        {t('actions.import', 'Import')}
+                    </Button>
+                )}
+
                 {isEdit && activeNode && (
                     <Button
                         size='small'
@@ -397,6 +438,16 @@ export const HelpDialog: FC<HelpDialogProps> = ({
                 <IconButton onClick={handleClose} size='small'>
                     <Close />
                 </IconButton>
+
+                {onImport && (
+                    <input
+                        ref={importInputRef}
+                        type='file'
+                        hidden
+                        accept={importAccept}
+                        onChange={handleImportPick}
+                    />
+                )}
             </Stack>
 
             {isMobile && !showLoader && (

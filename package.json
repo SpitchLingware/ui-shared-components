@@ -1,5 +1,5 @@
 {
-    "name": "@spitchligware/ui-shared-components",
+    "name": "@spitchlingware/ui-shared-components",
     "version": "1.0.0",
     "description": "UI Shared Components",
     "main": "./dist/index.js",

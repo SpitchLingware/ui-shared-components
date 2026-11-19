@@ -88,8 +88,9 @@ export function AsyncAutocomplete<T extends AsyncItem = AsyncItem>(
                     margin={'dense'}
                     disabled={disabled}
                     slotProps={{
+                        ...params.slotProps,
                         input: {
-                            ...params.InputProps,
+                            ...params.slotProps.input,
                             style: {
                                 backgroundColor: 'white',
                             },
@@ -102,13 +103,13 @@ export function AsyncAutocomplete<T extends AsyncItem = AsyncItem>(
                                             sx={{ mr: 1 }}
                                         />
                                     ) : null}
-                                    {params.InputProps.startAdornment}
+                                    {params.slotProps.input.startAdornment}
                                 </React.Fragment>
                             ),
-                            endAdornment: params.InputProps.endAdornment,
+                            endAdornment: params.slotProps.input.endAdornment,
                         },
                         inputLabel: {
-                            ...params.InputLabelProps,
+                            ...params.slotProps.inputLabel,
                             shrink: true,
                         },
                     }}

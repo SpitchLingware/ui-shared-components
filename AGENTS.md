@@ -1,7 +1,7 @@
 # Agent Quick Reference — @spitchlingware/ui-shared-components
 
 ## Project Overview
-Библиотека UI-компонентов для React 19 + MUI v7 на TypeScript. Компоненты экспортируются в `dist/index.js` через tsc (ESM/TS). Зависимости-пираты: @mui/material, @mui/icons-material, @mui/x-date-pickers, react-i18next, lodash, moment, uuid.
+Библиотека UI-компонентов для React 19 + MUI v9 на TypeScript. Компоненты экспортируются в `dist/index.js` через tsc (ESM/TS). Зависимости-пираты: @mui/material, @mui/icons-material, @mui/x-date-pickers, react-i18next, lodash, moment, uuid.
 
 ## Directory Map
 ```

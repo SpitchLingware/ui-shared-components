@@ -4,7 +4,7 @@ import {
     ArrowUpward,
     ArticleOutlined,
     ChevronRight,
-    DeleteOutline,
+    DeleteOutlined,
     ExpandMore,
     FolderOutlined,
     LinkOutlined,
@@ -197,7 +197,7 @@ export const HelpTree: FC<HelpTreeProps> = ({
                                     onClick={(e) =>
                                         stop(e, () => onDeleteNode(node.id))
                                     }>
-                                    <DeleteOutline sx={{ fontSize: 14 }} />
+                                    <DeleteOutlined sx={{ fontSize: 14 }} />
                                 </IconButton>
                             )}
                         </Stack>

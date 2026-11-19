@@ -1,4 +1,4 @@
-import { HelpOutline } from '@mui/icons-material';
+import { HelpOutlined } from '@mui/icons-material';
 import { IconButton, Tooltip } from '@mui/material';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,7 @@ export const HelpAnchor: FC<{ contextKey: string; title?: string }> = ({
                     size='small'
                     aria-label={label}
                     onClick={() => openByContextKey(contextKey)}>
-                    <HelpOutline fontSize='small' color='primary' />
+                    <HelpOutlined fontSize='small' color='primary' />
                 </IconButton>
             </Tooltip>
         );
@@ -37,7 +37,7 @@ export const HelpAnchor: FC<{ contextKey: string; title?: string }> = ({
                     aria-label={label}
                     sx={{ opacity: 0.4 }}
                     onClick={() => createForContext(contextKey, title)}>
-                    <HelpOutline fontSize='small' />
+                    <HelpOutlined fontSize='small' />
                 </IconButton>
             </Tooltip>
         );

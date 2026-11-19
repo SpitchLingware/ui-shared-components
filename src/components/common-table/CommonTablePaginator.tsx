@@ -68,9 +68,9 @@ export const CommonTablePaginator: React.FC<Props> = ({
     return (
         <Stack
             direction='row'
-            alignItems='center'
             spacing={1}
             sx={{
+                alignItems: 'center',
                 px: 1,
                 py: 0.5,
                 borderTop: 1,

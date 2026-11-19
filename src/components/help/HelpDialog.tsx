@@ -4,7 +4,7 @@ import {
     EditOutlined,
     FileDownloadOutlined,
     FileUploadOutlined,
-    HelpOutline,
+    HelpOutlined,
     SaveOutlined,
     ShareOutlined,
     VisibilityOutlined,
@@ -337,15 +337,15 @@ export const HelpDialog: FC<HelpDialogProps> = ({
             slotProps={{ paper: { sx: { height: '82vh' } } }}>
             <Stack
                 direction='row'
-                alignItems='center'
                 spacing={1}
                 sx={{
+                    alignItems: 'center',
                     px: 2,
                     py: 1.5,
                     borderBottom: '1px solid',
                     borderColor: 'divider',
                 }}>
-                <HelpOutline color='primary' />
+                <HelpOutlined color='primary' />
                 <Typography variant='h5' sx={{ fontWeight: 600 }}>
                     {t('title', 'Help')}
                 </Typography>

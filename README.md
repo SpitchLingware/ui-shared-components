@@ -1,6 +1,6 @@
 # @spitchlingware/ui-shared-components
 
-Библиотека переиспользуемых UI-компонентов для React, построенная на MUI v7.
+Библиотека переиспользуемых UI-компонентов для React, построенная на MUI v9.
 
 ## Быстрый старт
 
@@ -24,9 +24,9 @@ import { HelpEditor } from '@spitchlingware/ui-shared-components';
 
 ```json
 {
-  "@mui/icons-material": "^7.3.11",
-  "@mui/material":        "^7.3.8",
-  "@mui/x-date-pickers":  "^8.27.0",
+  "@mui/icons-material": "^9.5.0",
+  "@mui/material":        "^9.5.0",
+  "@mui/x-date-pickers":  "^9.18.0",
   "lodash":               "^4.18.1",
   "moment":               "^2.30.1",
   "moment-timezone":      "^0.6.3",

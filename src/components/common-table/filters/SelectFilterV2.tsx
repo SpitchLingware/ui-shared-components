@@ -193,13 +193,13 @@ export const SelectFilterV2: React.FC<Props> = ({
                                         overflow: 'hidden',
                                     },
                                 },
-                            },
-                            MenuListProps: {
-                                sx: {
-                                    p: 0,
-                                    overflowY: 'auto',
-                                    flex: 1,
-                                    minHeight: 0,
+                                list: {
+                                    sx: {
+                                        p: 0,
+                                        overflowY: 'auto',
+                                        flex: 1,
+                                        minHeight: 0,
+                                    },
                                 },
                             },
                         },

@@ -216,9 +216,9 @@ export const HelpEditor: FC<HelpEditorProps> = ({
             }}>
             <Stack
                 direction='row'
-                alignItems='center'
-                flexWrap='wrap'
                 sx={{
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
                     gap: 0.25,
                     px: 1,
                     py: 0.5,

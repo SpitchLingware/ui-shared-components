@@ -1,7 +1,7 @@
 # Agent Quick Reference — @spitchlingware/ui-shared-components
 
 ## Project Overview
-Библиотека UI-компонентов для React 19 + MUI v7 на TypeScript. Компоненты экспортируются в `dist/index.js` через tsc (ESM/TS). Зависимости-пираты: @mui/material, @mui/icons-material, @mui/x-date-pickers, react-i18next, lodash, moment, uuid.
+Библиотека UI-компонентов для React 19 + MUI v9 на TypeScript. Компоненты экспортируются в `dist/index.js` через tsc (ESM/TS). Зависимости-пираты: @mui/material, @mui/icons-material, @mui/x-date-pickers, react-i18next, lodash, moment, uuid.
 
 ## Directory Map
 ```
@@ -32,6 +32,9 @@ src/hooks/                — useDragAndDrop
   «Очистить» в футере поповера применяется сразу и закрывает его; цель очистки (`defaultFilterFor`) считает
   `FilterPopover` и передаёт в оба редактора пропом `reset`, так что очистка в поповере, ✕ на чипе и
   «Сбросить всё» в панели значат одно и то же.
+  Видимость колонок — `hiddenColumns` (держит потребитель через `useColumnVisibility`, меню — `ColumnVisibilityMenu`,
+  хранение `${storageKey}.columns.hidden`); скрытая колонка теряет активный фильтр (`releaseHiddenFilters`, один раз на
+  изменение набора), сортировка остаётся.
   Колонка с чекбоксом фиксирована (44px): запас ширины забирает служебная колонка-филлер в конце строки.
   Конфигурация колонок через `columns: TableColumnsType<TData> | 'flex' | null`. Вычисляемые колонки — `ComputedColumnProps` с параметром `id`, возвращающим JSX.
 - **CommonTablePaginator** — нижняя панель нумерации страниц MUI.

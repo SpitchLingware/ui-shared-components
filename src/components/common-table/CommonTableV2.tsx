@@ -26,6 +26,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { defaultFilterFor } from './common-table.utils';
+import {
+    columnTitleKey,
+    releaseHiddenFilters,
+} from './column-visibility.utils';
 import { CommonTablePaginator } from './CommonTablePaginator';
 import { valueHasTime } from './filters/date-filter.utils';
 import {
@@ -62,6 +66,7 @@ type Props = {
      *  `showColumnFilters` off too the table is bare and the filters have no
      *  UI at all */
     showFilterPanel?: boolean;
+    hiddenColumns?: Array<string>;
     updateDbState: (field: keyof CommonTableV2State, value: any) => void;
     getColumnSettings: (field: TableField) => CommonTableV2ColumnSettings;
 };
@@ -123,6 +128,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
         pageSizes,
         showColumnFilters = true,
         showFilterPanel = true,
+        hiddenColumns,
         updateDbState,
         getColumnSettings,
     } = props;
@@ -135,8 +141,11 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     const theme = useTheme();
 
     const visibleFields = useMemo(
-        () => fields.filter((f) => !f.hidden),
-        [fields],
+        () =>
+            fields.filter(
+                (f) => !f.hidden && !hiddenColumns?.includes(f.field),
+            ),
+        [fields, hiddenColumns],
     );
 
     const columnSettings = useMemo(() => {
@@ -159,6 +168,21 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
     } | null>(null);
 
     const edited = editing ? filterByName.get(editing.name) : undefined;
+
+    useEffect(() => {
+        if (editing && hiddenColumns?.includes(editing.name)) setEditing(null);
+    }, [editing, hiddenColumns]);
+
+    const releasedRef = useRef('');
+
+    useEffect(() => {
+        const signature = (hiddenColumns ?? []).join('\n');
+        if (signature === releasedRef.current || loading) return;
+        releasedRef.current = signature;
+        if (!hiddenColumns?.length) return;
+        const next = releaseHiddenFilters(hiddenColumns, fields, filter);
+        if (next) updateDbState('filter', next);
+    }, [loading, hiddenColumns, fields, filter, updateDbState]);
 
     /* the time switch belongs to the table, not to a single bound: it decides
        the mask of every date field and outlives the page */
@@ -474,7 +498,10 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                             />
                             {visibleFields.map((field, idx) => {
                                 const setting = columnSettings[idx];
-                                const tag = field.i18nTag ?? field.field;
+                                const title = columnTitleKey(
+                                    elementType,
+                                    field,
+                                );
                                 const sortable = setting.sortable ?? true;
                                 const filterColumn = filterByName.get(
                                     field.field,
@@ -516,10 +543,7 @@ export const CommonTableV2: React.FC<Props> = (props: Props) => {
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
                                                 }}>
-                                                {t(
-                                                    `details:${elementType}.fields.${tag}`,
-                                                    tag,
-                                                )}
+                                                {t(title.key, title.fallback)}
                                             </Typography>
                                             {sortable && (
                                                 <Box
